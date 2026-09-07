@@ -1158,7 +1158,7 @@
         <div class="tickets" id="tickets-grid"></div>
       </div>
 
-      <p class="print-note no-print">Descargá o imprimí este comprobante</p>
+      <p class="print-note no-print">Descargá este comprobante o, si no funciona, sacale una captura de pantalla</p>
 
       <div class="actions-row no-print">
         <button class="btn-ghost btn" id="print-comprobante">Imprimir</button>
@@ -1807,7 +1807,7 @@
     var panel = $("#comprobante-panel");
     var ticketsEl = $("#tickets-grid");
     if(typeof html2canvas === "undefined"){
-      alert("No pudimos preparar la imagen. Probá con 'Imprimir'.");
+      alert("No pudimos preparar la imagen. Sacale una captura de pantalla a este comprobante.");
       return;
     }
     btn.disabled = true;
@@ -1819,15 +1819,53 @@
         backgroundColor: "#ffffff",
         scale: window.devicePixelRatio > 1 ? 2 : 1.5
       });
+      var fileName = "comprobante-" + (state.lastReserva ? state.lastReserva.codigo : "lujan") + ".png";
       var dataUrl = canvas.toDataURL("image/png");
-      var link = document.createElement("a");
-      link.download = "comprobante-" + (state.lastReserva ? state.lastReserva.codigo : "lujan") + ".png";
-      link.href = dataUrl;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+
+      // En muchos navegadores de celular (Safari de iPhone, navegadores
+      // integrados de WhatsApp/Instagram) el truco de <a download> no hace
+      // nada visible. Si el celular soporta compartir archivos, usamos eso:
+      // abre el menú nativo con la opción de guardar en Fotos/Archivos.
+      var compartioOk = false;
+      if(navigator.canShare && navigator.share){
+        try{
+          var blob = await new Promise(function(resolve){ canvas.toBlob(resolve, "image/png"); });
+          if(blob){
+            var file = new File([blob], fileName, {type:"image/png"});
+            if(navigator.canShare({files:[file]})){
+              await navigator.share({files:[file], title:"Comprobante Peregrinación a Luján"});
+              compartioOk = true;
+            }
+          }
+        } catch(shareErr){
+          // si el usuario cancela el share, no mostramos error
+          if(shareErr && shareErr.name === "AbortError"){ compartioOk = true; }
+        }
+      }
+
+      if(!compartioOk){
+        var link = document.createElement("a");
+        link.download = fileName;
+        link.href = dataUrl;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        // Respaldo: si la descarga automática no funcionó, abrimos la imagen
+        // en una pestaña para que la mantengan presionada y la guarden, o
+        // directamente saquen una captura de pantalla.
+        var w = window.open();
+        if(w){
+          w.document.write(
+            '<title>Comprobante</title>' +
+            '<body style="margin:0;background:#111;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;font-family:sans-serif;">' +
+            '<p style="color:#fff;padding:12px;text-align:center;">Mantené presionada la imagen para guardarla, o sacale una captura de pantalla.</p>' +
+            '<img src="' + dataUrl + '" style="max-width:100%;height:auto;">' +
+            '</body>'
+          );
+        }
+      }
     } catch(e){
-      alert("No pudimos generar la imagen. Probá con 'Imprimir'.");
+      alert("No pudimos generar la imagen. Sacale una captura de pantalla a este comprobante.");
     } finally {
       ticketsEl.classList.remove("capturing");
       btn.disabled = false;
