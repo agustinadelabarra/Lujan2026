@@ -520,6 +520,10 @@
   .micro-card.selected .label,
   .micro-card.selected .hint{color:#fff;}
   .micro-card.selected .ver-participantes-btn{color:#fff; text-decoration-color:rgba(255,255,255,.6);}
+  .micro-card.selected .participantes-list{border-top-color:rgba(255,255,255,.3);}
+  .micro-card.selected .participantes-list .p-item{color:#fff; border-bottom-color:rgba(255,255,255,.18);}
+  .micro-card.selected .participantes-list .p-code,
+  .micro-card.selected .participantes-list .p-empty{color:rgba(255,255,255,.75);}
   .micro-card.full{opacity:.6; cursor:not-allowed;}
   .micro-boxes{
     display:flex;
@@ -787,7 +791,7 @@
   .btn-danger{background:var(--accent); color:#fff;}
   .btn-danger:hover{filter:brightness(0.92);}
   .btn-text{background:none; border:none; color:var(--primary); padding:4px 0; font-weight:400; font-size:var(--fs-sm); cursor:pointer;}
-  .back-home{display:inline-block; margin-bottom:16px;}
+  .back-home{display:inline-block; margin-bottom:16px; font-size:var(--fs-md);}
 
   /* ---- modal (PIN coordinadoras) ---- */
   .modal-overlay{
@@ -826,6 +830,12 @@
   .coord-checks{display:flex; gap:14px; flex-shrink:0;}
   .coord-check{display:flex; align-items:center; gap:5px; font-size:var(--fs-2xs); color:var(--ink-soft); cursor:pointer; white-space:nowrap;}
   .coord-check input{width:19px; height:19px; cursor:pointer; accent-color:var(--primary); flex-shrink:0;}
+  .coord-baja-btn{
+    background:none; border:none; cursor:pointer;
+    font-size:1.05rem; padding:2px 4px; flex-shrink:0;
+    line-height:1; opacity:.75;
+  }
+  .coord-baja-btn:hover{opacity:1;}
 
   .cancel-confirm-box{
     margin-top:16px;
@@ -1041,6 +1051,18 @@
   </div>
 </div>
 
+<div class="modal-overlay no-print" id="coord-baja-modal" hidden>
+  <div class="modal-card">
+    <h3>Dar de baja reserva</h3>
+    <p>¿Confirmás dar de baja el lugar de <strong id="coord-baja-nombre">—</strong>? Esta acción libera su lugar y no se puede deshacer.</p>
+    <div class="pin-error" id="coord-baja-error"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="coord-baja-cancelar" type="button">Volver</button>
+      <button class="btn btn-danger" id="coord-baja-confirmar" type="button">Dar de baja</button>
+    </div>
+  </div>
+</div>
+
 <main>
 
   <!-- HOME -->
@@ -1126,7 +1148,7 @@
         <option value="Nordelta">Nordelta</option>
       </select>
 
-      <label class="field-label" for="buscar-input-inline" style="margin-top:22px;">Buscá a un conocido para anotarte en su micro</label>
+      <label class="field-label" for="buscar-input-inline" style="margin-top:22px;">Opcional: buscá a un conocido para anotarte en su micro</label>
       <div class="search-form" id="buscar-form-inline">
         <input type="text" id="buscar-input-inline" placeholder="Nombre y apellido" autocomplete="off">
         <div id="buscar-resultados-inline"></div>
@@ -1503,11 +1525,13 @@
   }
 
   async function cargarParticipantes(microId, listEl){
+    // Vista pública: no mostramos el código de baja acá (es lo único que
+    // hace falta para cancelar una reserva ajena). Solo el nombre.
     listEl.innerHTML = '<div class="p-empty">Cargando…</div>';
     try{
-      var res = await sb.from("lujan_pasajeros").select("nombre,codigo_baja").eq("micro_id", microId).is("cancelado_at", null);
+      var res = await sb.from("lujan_pasajeros").select("nombre").eq("micro_id", microId).is("cancelado_at", null);
       if(res.error) throw res.error;
-      var filas = (res.data || []).map(function(p){ return {nombre:p.nombre, codigo:p.codigo_baja}; });
+      var filas = (res.data || []).map(function(p){ return {nombre:p.nombre}; });
       listEl.dataset.loaded = "1";
       if(!filas.length){
         listEl.innerHTML = '<div class="p-empty">Todavía nadie se anotó en este micro.</div>';
@@ -1515,7 +1539,7 @@
       }
       filas.sort(function(a,b){ return a.nombre.localeCompare(b.nombre, "es"); });
       listEl.innerHTML = filas.map(function(f){
-        return '<div class="p-item"><span>' + esc(f.nombre) + '</span><span class="p-code mono">' + esc(f.codigo || "") + '</span></div>';
+        return '<div class="p-item"><span>' + esc(f.nombre) + '</span></div>';
       }).join("");
     } catch(e){
       listEl.innerHTML = '<div class="p-empty">No pudimos cargar la lista.</div>';
@@ -2226,11 +2250,12 @@
       listEl.innerHTML = '<div class="p-empty">Todavía nadie se anotó en este micro.</div>';
     } else {
       listEl.innerHTML = pasajerosMicro.map(function(p){
-        return '<div class="p-item coord-p-item" data-pasajero="' + esc(p.id) + '">' +
+        return '<div class="p-item coord-p-item" data-pasajero="' + esc(p.id) + '" data-codigo="' + esc(p.codigo_baja || "") + '" data-nombre="' + esc(p.nombre) + '">' +
           '<span>' + esc(p.nombre) + ' <span class="p-code mono">' + esc(p.codigo_baja || "") + '</span></span>' +
           '<div class="coord-checks">' +
             '<label class="coord-check"><input type="checkbox" data-tipo="ida" ' + (p.ida ? "checked" : "") + '> Ida</label>' +
             '<label class="coord-check"><input type="checkbox" data-tipo="vuelta" ' + (p.vuelta ? "checked" : "") + '> Vuelta</label>' +
+            '<button type="button" class="coord-baja-btn" title="Dar de baja">🗑</button>' +
           '</div></div>';
       }).join("");
     }
@@ -2284,6 +2309,54 @@
     coordAplicarLocal(pasajeroId, tipo, valor);
     coordEncolarCambio(pasajeroId, tipo, valor);
     coordIntentarSync();
+  });
+
+  // ---- coordinadoras: dar de baja una reserva desde el listado ----
+  var coordBajaPendiente = null;
+  $("#coord-listado").addEventListener("click", function(e){
+    var btn = e.target.closest(".coord-baja-btn");
+    if(!btn) return;
+    var row = btn.closest(".coord-p-item");
+    coordBajaPendiente = {
+      pasajeroId: row.getAttribute("data-pasajero"),
+      codigo: row.getAttribute("data-codigo"),
+      nombre: row.getAttribute("data-nombre")
+    };
+    $("#coord-baja-nombre").textContent = coordBajaPendiente.nombre;
+    $("#coord-baja-error").textContent = "";
+    $("#coord-baja-modal").hidden = false;
+  });
+  function cerrarCoordBajaModal(){ $("#coord-baja-modal").hidden = true; coordBajaPendiente = null; }
+  $("#coord-baja-cancelar").addEventListener("click", cerrarCoordBajaModal);
+  $("#coord-baja-confirmar").addEventListener("click", async function(){
+    if(!coordBajaPendiente) return;
+    var btn = this;
+    var pend = coordBajaPendiente;
+    btn.disabled = true;
+    $("#coord-baja-error").textContent = "";
+    try{
+      if(!pend.codigo){ throw new Error("Falta el código de esta reserva."); }
+      var res = await sb.rpc("lujan_cancelar_reserva", { p_codigo: pend.codigo });
+      if(res.error) throw res.error;
+      // sacamos al pasajero y bajamos el contador de ocupados, en cache y en pantalla
+      var data = coordGetCache() || coordUltimoData;
+      if(data){
+        var pasajero = data.pasajeros.find(function(x){ return x.id === pend.pasajeroId; });
+        data.pasajeros = data.pasajeros.filter(function(x){ return x.id !== pend.pasajeroId; });
+        if(pasajero){
+          var micro = data.micros.find(function(x){ return x.id === pasajero.micro_id; });
+          if(micro) micro.ocupados = Math.max(0, micro.ocupados - 1);
+        }
+        coordSetCache(data);
+        coordRenderCoordinadoras(data);
+      }
+      cerrarCoordBajaModal();
+      coordSetStatus("Baja confirmada: " + pend.nombre, "ok");
+    } catch(err){
+      $("#coord-baja-error").textContent = (err && err.message) || "No pudimos dar de baja la reserva. Revisá la conexión e intentá de nuevo.";
+    } finally {
+      btn.disabled = false;
+    }
   });
 
   function coordAplicarLocal(pasajeroId, tipo, valor){
