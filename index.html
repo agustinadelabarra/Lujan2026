@@ -770,7 +770,9 @@
     display:flex; align-items:center; justify-content:center;
   }
   .remove-name-btn:hover{border-color:var(--accent); background:var(--accent-tint);}
-  .name-search-input{border-color:var(--line);}
+  .name-search-input{border-color:var(--line); -webkit-appearance:none; appearance:none;}
+  .name-search-input::-webkit-search-cancel-button,
+  .name-search-input::-webkit-search-decoration{-webkit-appearance:none; appearance:none;}
   .name-input-row.valida .name-search-input{border-color:var(--primary); background:var(--primary-tint);}
   .name-suggestions{
     position:absolute; left:0; right:0; top:calc(100% + 4px);
@@ -1886,7 +1888,7 @@
       row.innerHTML =
         '<span class="num mono">' + (idx+1) + '</span>' +
         '<div class="name-autocomplete">' +
-          '<input type="text" class="name-search-input" placeholder="Escribí el nombre del peregrino inscripto en el form" autocomplete="off" data-idx="' + idx + '" value="' + esc(n.texto) + '">' +
+          '<input type="search" class="name-search-input" placeholder="Escribí el nombre del peregrino inscripto en el form" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-idx="' + idx + '" value="' + esc(n.texto) + '">' +
           '<div class="name-suggestions" hidden></div>' +
         '</div>' +
         (state.nombres.length > 1 ? '<button type="button" class="remove-name-btn" data-idx="' + idx + '" aria-label="Quitar este lugar">✖︎</button>' : '');
@@ -2010,15 +2012,21 @@
         backgroundColor: "#ffffff",
         scale: window.devicePixelRatio > 1 ? 2 : 1.5
       });
-      var fileName = "comprobante-" + (state.lastReserva ? state.lastReserva.codigo : "lujan") + ".png";
+      var primerCodigo = (state.lastReserva && state.lastReserva.tickets && state.lastReserva.tickets[0]) ? state.lastReserva.tickets[0].codigo_baja : null;
+      var fileName = "comprobante-" + (primerCodigo || "lujan") + ".png";
       var dataUrl = canvas.toDataURL("image/png");
 
       // En muchos navegadores de celular (Safari de iPhone, navegadores
       // integrados de WhatsApp/Instagram) el truco de <a download> no hace
-      // nada visible. Si el celular soporta compartir archivos, usamos eso:
-      // abre el menú nativo con la opción de guardar en Fotos/Archivos.
+      // nada visible, así que ahí usamos el menú nativo de compartir para
+      // guardar en Fotos/Archivos. En PC (Windows/Mac/Linux de escritorio)
+      // NO lo usamos aunque el navegador lo soporte (Edge/Chrome en Windows
+      // sí lo soportan) porque ahí lo que la persona espera es que el
+      // archivo baje directo a Descargas, no un panel de "Compartir".
+      var esMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+        (navigator.maxTouchPoints > 1 && /Mac/.test(navigator.platform)); // iPad pidiendo sitio de escritorio
       var compartioOk = false;
-      if(navigator.canShare && navigator.share){
+      if(esMobile && navigator.canShare && navigator.share){
         try{
           var blob = await new Promise(function(resolve){ canvas.toBlob(resolve, "image/png"); });
           if(blob){
@@ -2041,18 +2049,22 @@
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-        // Respaldo: si la descarga automática no funcionó, abrimos la imagen
-        // en una pestaña para que la mantengan presionada y la guarden, o
-        // directamente saquen una captura de pantalla.
-        var w = window.open();
-        if(w){
-          w.document.write(
-            '<title>Comprobante</title>' +
-            '<body style="margin:0;background:#111;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;font-family:sans-serif;">' +
-            '<p style="color:#fff;padding:12px;text-align:center;">Mantené presionada la imagen para guardarla, o sacale una captura de pantalla.</p>' +
-            '<img src="' + dataUrl + '" style="max-width:100%;height:auto;">' +
-            '</body>'
-          );
+        // Respaldo SOLO en mobile: si el <a download> no hizo nada visible
+        // (pasa en algunos navegadores de celular), abrimos la imagen en una
+        // pestaña para que la mantengan presionada y la guarden. En PC no
+        // hace falta — el <a download> ya bajó el archivo a Descargas — y
+        // abrir esta pestaña ahí solo generaría confusión.
+        if(esMobile){
+          var w = window.open();
+          if(w){
+            w.document.write(
+              '<title>Comprobante</title>' +
+              '<body style="margin:0;background:#111;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;font-family:sans-serif;">' +
+              '<p style="color:#fff;padding:12px;text-align:center;">Mantené presionada la imagen para guardarla, o sacale una captura de pantalla.</p>' +
+              '<img src="' + dataUrl + '" style="max-width:100%;height:auto;">' +
+              '</body>'
+            );
+          }
         }
       }
     } catch(e){
