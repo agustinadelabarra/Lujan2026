@@ -21,6 +21,18 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
+<!-- Google Analytics 4 (data stream compartido con otras apps de la organización) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-K2552EEF1Q"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){ dataLayer.push(arguments); }
+  gtag('js', new Date());
+  // send_page_view en false: esta es una SPA de una sola página real, las
+  // "pantallas" (home, buscar, micros, coordinadoras, reservar, baja) se
+  // trackean a mano como page_view en showScreen().
+  gtag('config', 'G-K2552EEF1Q', { send_page_view: false });
+</script>
+
 <style>
   :root{
     --ground:#F1F2EE;
@@ -1373,6 +1385,15 @@
     });
   }
 
+  // ---- Google Analytics 4 ----
+  // Envoltorio defensivo: si gtag.js no llegó a cargar (bloqueado, sin
+  // conexión, o en un entorno de test sin la librería real) esto nunca debe
+  // romper el flujo de la app.
+  function trackEvent(nombre, params){
+    if(typeof gtag !== "function") return;
+    try{ gtag('event', nombre, params || {}); }catch(e){}
+  }
+
   function setStep(n){
     [1,2].forEach(function(i){
       $("#step-"+i).hidden = i !== n;
@@ -1400,6 +1421,11 @@
     // en esa pantalla, para no dejarlos siempre a la vista.
     $all(".menu-coord-item").forEach(function(el){ el.hidden = (name !== "coordinadoras"); });
     window.scrollTo({top:0, behavior:"smooth"});
+    trackEvent('page_view', {
+      page_title: 'Peregrinación Luján — ' + name,
+      page_location: location.href,
+      page_path: '/' + name
+    });
   }
 
   function resetReserva(){
@@ -1786,6 +1812,11 @@
       setStep(2);
       microsMapCache = null;
       loadContador();
+      trackEvent('reserva_confirmada', {
+        salida: res.data.salida,
+        micro_label: res.data.micro_label,
+        cantidad_tickets: (res.data.tickets || []).length
+      });
     } catch(e){
       // Dejamos microSelPendiente intacto (no se tocó state.microSel en
       // ningún momento) para poder reintentar tocando el botón de nuevo,
@@ -2364,6 +2395,7 @@
       if(state.salida) loadMicros(state.salida);
       microsMapCache = null;
       loadContador();
+      trackEvent('baja_confirmada', { salida: res.data.salida });
     } catch(e){
       resultBox.innerHTML = '<div class="error-box">' + esc(e.message || "No pudimos procesar la baja.") + '</div>';
     } finally {
@@ -2518,6 +2550,7 @@
       coordSetCache(fresco);
       coordRenderCoordinadoras(fresco);
       coordSetStatus("Descargado ✓ " + new Date(fresco.ts).toLocaleString("es-AR"), "ok");
+      trackEvent('vista_offline_descargada', {});
     } catch(e){
       coordSetStatus("No se pudo descargar: revisá la conexión.", "pending");
     } finally {
@@ -2777,6 +2810,10 @@
       if(!compartioOk){
         XLSX.writeFile(libro, fileName);
       }
+      trackEvent('excel_exportado', {
+        cantidad_pasajeros: enriquecidos.length,
+        cantidad_micros: microsOrdenados.length
+      });
     } catch(e){
       alert("No pudimos generar el Excel: " + (e.message || "probá de nuevo."));
     } finally {
