@@ -397,7 +397,7 @@
     border:1.5px solid var(--line);
     border-radius:8px;
     box-shadow:var(--shadow);
-    min-width:190px;
+    min-width:230px;
     z-index:50;
     overflow:hidden;
   }
@@ -414,6 +414,7 @@
   }
   .hamburger-menu button:hover{background:var(--ground);}
   .hamburger-menu button + button{border-top:1px solid var(--line);}
+  .menu-coord-item{border-top:1px solid var(--line);}
   .home-actions{
     display:flex;
     flex-direction:column;
@@ -841,21 +842,19 @@
 
   /* ---- coordinadoras ---- */
   .btn-sm{padding:7px 12px; font-size:var(--fs-xs); border-radius:7px;}
-  .coord-toolbar{
-    display:flex; flex-direction:column; gap:8px;
-    margin:12px 0 16px; padding:10px 12px;
-    background:var(--primary-tint); border-radius:10px; border:1px solid var(--line);
-  }
-  .coord-toolbar-actions{display:flex; align-items:center; flex-wrap:wrap; gap:8px;}
-  .coord-status{font-size:var(--fs-2xs); color:var(--ink-soft);}
+  .coord-status{font-size:var(--fs-2xs); color:var(--ink-soft); display:block; margin-top:2px;}
   .coord-status.ok{color:var(--good);}
   .coord-status.pending{color:var(--accent); font-weight:400;}
-  .coord-stats{font-size:var(--fs-xs); color:var(--ink-soft); display:flex; flex-wrap:wrap; gap:4px 10px;}
-  .coord-stats strong{color:var(--ink); font-weight:600;}
-  .coord-stats .coord-stat-alerta{color:var(--accent); font-weight:600;}
-  .coord-app-toggle-row{
-    display:flex; align-items:center; flex-wrap:wrap; gap:8px;
-    padding-top:6px; border-top:1px dashed var(--line);
+  /* Mismos cuadros que Libres/Ocupados de cada micro (.micro-box), en fila,
+     como resumen general arriba del listado. */
+  .coord-summary-boxes{display:flex; gap:8px; margin:12px 0 18px; flex-wrap:wrap;}
+  .coord-summary-boxes .micro-box{width:auto; flex:1 1 90px; padding:12px 8px;}
+  .micro-box.faltan{background:var(--gold);}
+
+  /* ---- interruptor + acciones de Coordinadoras dentro del menú ☰ ---- */
+  .menu-coord-toggle-row{
+    display:flex; flex-direction:column; gap:4px;
+    padding:10px 16px;
   }
   .switch-wrap{display:flex; align-items:center; gap:8px; cursor:pointer; user-select:none;}
   .switch-wrap input{position:absolute; opacity:0; width:0; height:0;}
@@ -870,7 +869,7 @@
   .switch-wrap input:checked + .switch-track{background:var(--good);}
   .switch-wrap input:checked + .switch-track .switch-thumb{left:18px;}
   .switch-text{font-size:var(--fs-xs); color:var(--ink); font-weight:400;}
-  .coord-app-toggle-hint{font-size:var(--fs-2xs); color:var(--ink-soft);}
+  .coord-app-toggle-hint{font-size:var(--fs-2xs); color:var(--ink-soft); padding-left:46px;}
   #coord-listado .participantes-list{max-height:none; overflow-y:visible;}
   .participantes-list .coord-p-item{
     flex-wrap:nowrap; overflow-x:auto; gap:10px; padding:12px 0;
@@ -1111,6 +1110,19 @@
     <div class="hamburger-menu" id="menu-dropdown" hidden>
       <button type="button" id="open-micros">📋 Micros y estado</button>
       <button type="button" id="open-coord">👥 Coordinadoras</button>
+      <!-- Solo visibles estando ya en Coordinadoras (se muestran/ocultan
+           desde showScreen). Las acciones y el interruptor de la app viven
+           acá, no sueltos en la pantalla, para no llamar tanto la atención. -->
+      <button type="button" id="coord-descargar" class="menu-coord-item" hidden>📥 Vista offline</button>
+      <button type="button" id="coord-exportar" class="menu-coord-item" hidden>⬇ Excel</button>
+      <div class="menu-coord-toggle-row menu-coord-item" hidden>
+        <label class="switch-wrap">
+          <input type="checkbox" id="coord-app-toggle" checked>
+          <span class="switch-track"><span class="switch-thumb"></span></span>
+          <span class="switch-text" id="coord-app-toggle-label">Aplicación habilitada</span>
+        </label>
+        <span class="coord-app-toggle-hint" id="coord-app-toggle-hint"></span>
+      </div>
     </div>
   </div>
 </div>
@@ -1205,22 +1217,9 @@
   <section class="panel" id="screen-coordinadoras" hidden>
     <button class="btn-text back-home" type="button">← Volver al inicio</button>
     <h2>Visión coordinadoras</h2>
-    <div class="coord-toolbar">
-      <div class="coord-toolbar-actions">
-        <button class="btn btn-ghost btn-sm" id="coord-descargar" type="button">📥 Vista offline</button>
-        <button class="btn btn-ghost btn-sm" id="coord-exportar" type="button">⬇ Excel</button>
-        <span class="coord-status" id="coord-status"></span>
-      </div>
-      <div class="coord-stats" id="coord-stats"></div>
-      <div class="coord-app-toggle-row">
-        <label class="switch-wrap">
-          <input type="checkbox" id="coord-app-toggle" checked>
-          <span class="switch-track"><span class="switch-thumb"></span></span>
-          <span class="switch-text" id="coord-app-toggle-label">Aplicación habilitada</span>
-        </label>
-        <span class="coord-app-toggle-hint" id="coord-app-toggle-hint"></span>
-      </div>
-    </div>
+    <p class="hint">Vista offline, Excel y habilitar/deshabilitar la app están en el menú ☰ de arriba.</p>
+    <span class="coord-status" id="coord-status"></span>
+    <div class="coord-summary-boxes" id="coord-summary-boxes"></div>
     <div id="coord-listado"><div class="skeleton">Cargando…</div></div>
   </section>
 
@@ -1396,6 +1395,10 @@
     if(name === "home") loadContador();
     if(name === "micros") loadMicrosOverview();
     if(name === "coordinadoras") loadCoordinadoras();
+    // "Vista offline", "Excel" y el interruptor de la app solo tienen
+    // sentido estando ya en Coordinadoras — se muestran en el menú ☰ solo
+    // en esa pantalla, para no dejarlos siempre a la vista.
+    $all(".menu-coord-item").forEach(function(el){ el.hidden = (name !== "coordinadoras"); });
     window.scrollTo({top:0, behavior:"smooth"});
   }
 
@@ -2422,19 +2425,27 @@
     return (data.padron || []).filter(function(p){ return !idsConReserva[p.id]; });
   }
 
+  // Tres cuadros resumen (mismo estilo que los cuadros Libres/Ocupados de
+  // cada micro): lugares libres y ocupados sumados entre todos los micros,
+  // y cuántos peregrinos del padrón todavía no se anotaron en ninguno.
   function coordRenderStats(data){
-    var el = $("#coord-stats");
+    var el = $("#coord-summary-boxes");
     if(!el) return;
     var totalPadron = (data.padron || []).length;
-    var reservados = (data.pasajeros || []).length;
-    var noInscriptos = coordCalcularNoInscriptos(data);
-    if(!totalPadron){
+    if(!totalPadron && !(data.micros || []).length){
       el.innerHTML = "";
       return;
     }
+    var totalLibres = 0, totalOcupados = 0;
+    (data.micros || []).forEach(function(m){
+      totalOcupados += m.ocupados || 0;
+      totalLibres += Math.max(0, (m.capacidad || 0) - (m.ocupados || 0));
+    });
+    var noInscriptos = coordCalcularNoInscriptos(data);
     el.innerHTML =
-      '<span><strong>' + reservados + '</strong> con lugar reservado</span>' +
-      '<span class="' + (noInscriptos.length ? "coord-stat-alerta" : "") + '"><strong>' + noInscriptos.length + '</strong> del padrón sin inscribirse todavía</span>';
+      '<div class="micro-box libres"><span class="n">' + totalLibres + '</span><span class="l">Libres</span></div>' +
+      '<div class="micro-box ocupados"><span class="n">' + totalOcupados + '</span><span class="l">Ocupados</span></div>' +
+      '<div class="micro-box faltan"><span class="n">' + noInscriptos.length + '</span><span class="l">Faltan anotarse</span></div>';
   }
 
   function coordRenderStatusDesdeCache(data){
@@ -2517,7 +2528,11 @@
   // ---- exportar Excel (Coordinadoras): hoja Total + una hoja por micro +
   // hoja de no inscriptos, con totalizadores y dieta especial. ----
   var COLUMNAS_LISTADO = ["Lugar de salida", "Micro", "Nombre", "N° de reserva", "Dieta especial", "Ida", "Vuelta"];
-  var ANCHOS_LISTADO = [{wch:16},{wch:14},{wch:26},{wch:14},{wch:20},{wch:6},{wch:8}];
+  // La primera columna (wch:28) es la misma que usa la mini-tabla de micros
+  // de la hoja "Total" (salida + nombre del micro juntos, ej. "Vicente
+  // López — Micro 1 VL"), así que tiene que ser lo bastante ancha para que
+  // ese texto no quede tapado por la columna de al lado.
+  var ANCHOS_LISTADO = [{wch:28},{wch:14},{wch:26},{wch:14},{wch:20},{wch:6},{wch:8}];
 
   function nombreHojaValido(s){
     // Excel: máx 31 caracteres, sin : \ / ? * [ ]
@@ -2554,7 +2569,10 @@
   // para que un listado de varias páginas siga mostrando las columnas.
   // El área de impresión cubre todo (título + totales + tabla completa),
   // no solo lo que entraría en una página A4.
-  function construirHojaConTotales(libro, nombreHoja, titulo, lineasTotales, pasajerosEnriquecidos){
+  // `enlaces` (opcional): [{ indexEnLineasTotales, col, targetSheetName }]
+  // — para poner un hipervínculo interno (ej. en la mini-tabla de micros de
+  // la hoja "Total") que salta directo a la hoja de ese micro.
+  function construirHojaConTotales(libro, nombreHoja, titulo, lineasTotales, pasajerosEnriquecidos, enlaces){
     var filas = [];
     filas.push([titulo]);
     filas.push([]);
@@ -2576,6 +2594,19 @@
     var totalCols = COLUMNAS_LISTADO.length;
     hoja["!merges"] = [{ s:{r:0,c:0}, e:{r:0,c:totalCols-1} }]; // título ocupa todo el ancho de la tabla
     var nombreFinal = nombreHojaValido(nombreHoja);
+
+    // "filas" arranca con [título, fila en blanco, ...lineasTotales...], así
+    // que la fila i de lineasTotales queda en la fila (2 + i) de la hoja.
+    if(enlaces && enlaces.length){
+      enlaces.forEach(function(e){
+        var r = 2 + e.indexEnLineasTotales;
+        var c = e.col || 0;
+        var addr = XLSX.utils.encode_cell({ r:r, c:c });
+        if(!hoja[addr]) hoja[addr] = { t:"s", v: (filas[r] && filas[r][c]) || "" };
+        hoja[addr].l = { Target: "#'" + e.targetSheetName + "'!A1", Tooltip: "Ir a la hoja de este micro" };
+      });
+    }
+
     XLSX.utils.book_append_sheet(libro, hoja, nombreFinal);
 
     var totalFilas = filas.length;
@@ -2655,12 +2686,24 @@
       var lineasTotal = [];
       lineasTotal.push("Total de pasajeros con lugar reservado: " + enriquecidos.length);
       lineasTotal.push("");
-      tablaMicros.forEach(function(fila){ lineasTotal.push(fila); });
+      // Mientras armamos la mini-tabla, guardamos en qué fila quedó cada
+      // micro para poder linkearla después a su propia hoja (saltamos la
+      // fila 0, que es el encabezado, y la última, que es el Total).
+      var enlacesTotal = [];
+      tablaMicros.forEach(function(fila, i){
+        var idx = lineasTotal.length;
+        lineasTotal.push(fila);
+        if(i >= 1 && i <= microsOrdenados.length){
+          var m = microsOrdenados[i - 1];
+          var keyMicro = m.salida + " - " + m.label;
+          enlacesTotal.push({ indexEnLineasTotales: idx, col: 0, targetSheetName: nombreHojaValido(keyMicro) });
+        }
+      });
       lineasTotal.push("");
       lineasTotal.push("Peregrinos del padrón sin inscribirse todavía: " + noInscriptos.length + " (ver hoja \"No inscriptos\")");
 
       var libro = XLSX.utils.book_new();
-      construirHojaConTotales(libro, "Total", "LISTADO TOTAL — Todos los micros", lineasTotal, enriquecidos);
+      construirHojaConTotales(libro, "Total", "LISTADO TOTAL — Todos los micros", lineasTotal, enriquecidos, enlacesTotal);
 
       // ---- una hoja por micro ----
       var porMicroLista = {};
@@ -2671,7 +2714,13 @@
       });
       Object.keys(porMicroLista).sort().forEach(function(key){
         var lista = porMicroLista[key];
-        var lineas = ["Total de pasajeros: " + lista.length];
+        var dietaEnEsteMicro = lista.filter(function(p){
+          return p.dieta && p.dieta.trim().toLowerCase() === "sin gluten";
+        }).length;
+        var lineas = [
+          "Total de pasajeros: " + lista.length,
+          "Total con menú especial (sin gluten): " + dietaEnEsteMicro
+        ];
         var titulo = key.replace(" - ", " — ").toUpperCase();
         construirHojaConTotales(libro, key, titulo, lineas, lista);
       });
@@ -2679,10 +2728,14 @@
       // ---- hoja de no inscriptos (mismo tratamiento: título grande arriba
       // y encabezado de columnas que se repite en cada página impresa) ----
       var COLUMNAS_NO_INSC = ["Apellido", "Nombre", "Sede", "Salida de micro", "Año", "Rol"];
+      var dietaNoInsc = noInscriptos.filter(function(p){
+        return p.dieta_especial && normalizarDieta(p.dieta_especial).toLowerCase() === "sin gluten";
+      }).length;
       var filasNoInsc = [];
       filasNoInsc.push(["NO INSCRIPTOS — Peregrinos del padrón sin lugar reservado"]);
       filasNoInsc.push([]);
       filasNoInsc.push(["Total sin inscribirse: " + noInscriptos.length]);
+      filasNoInsc.push(["Total con menú especial (sin gluten): " + dietaNoInsc]);
       filasNoInsc.push([]);
       var filaEncabezadoNoInsc = filasNoInsc.length;
       filasNoInsc.push(COLUMNAS_NO_INSC);
