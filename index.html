@@ -1101,7 +1101,8 @@
 <div class="modal-overlay no-print" id="confirmar-micro-modal" hidden>
   <div class="modal-card">
     <h3>Confirmar micro</h3>
-    <p>¿Confirmás <strong id="confirmar-micro-label">—</strong> como tu micro? Al confirmar, se completa tu reserva.</p>
+    <p>Confirmar <strong id="confirmar-micro-label">—</strong></p>
+    <p class="hint" id="confirmar-micro-nombres" style="margin-top:-6px;"></p>
     <div id="confirmar-micro-error"></div>
     <div class="modal-actions">
       <button class="btn btn-ghost" id="confirmar-micro-cancelar" type="button">Cancelar</button>
@@ -1359,6 +1360,7 @@
     state.lugares = 1;
     state.nombres = [{ texto: "", sel: null }];
     state.filtro = null;
+    autoModalCancelado = false;
     renderCantidad();
     renderNombres();
     $("#sede-select").value = "";
@@ -1426,19 +1428,22 @@
     await aplicarFiltroMicro(salida, microId, microLabel);
   }
 
-  // Filtra la grilla de micros a uno solo (el de la persona encontrada) y, si todavía
-  // tiene lugar para la cantidad elegida, lo deja seleccionado.
+  // Filtra la grilla de micros a uno solo (el de la persona encontrada). Si
+  // sede + nombres ya están completos y ese micro tiene lugar, se abre
+  // directamente el popup de confirmación; si no, queda como única opción
+  // para tocar en cuanto se completen los demás campos.
   async function aplicarFiltroMicro(salida, microId, microLabel){
     $("#sede-select").value = salida;
     state.salida = salida;
+    state.microSel = null;
+    autoModalCancelado = false;
     await loadMicros(salida);
     pollMicros();
     state.filtro = { microId: microId, microLabel: microLabel };
     var filtroBox = $("#filtro-activo");
     filtroBox.hidden = false;
     $("#filtro-activo-txt").textContent = "Mostrando el micro de " + microLabel + " en " + salida + ".";
-    var m = state.micros.find(function(x){ return x.id === microId || x.label === microLabel; });
-    state.microSel = (m && (m.capacidad - m.ocupados) >= state.lugares) ? m : null;
+    autoAbrirModalSiUnico();
     renderMicros();
     return !!state.microSel;
   }
@@ -1460,7 +1465,14 @@
   }
 
   // ---- micros ----
-  async function loadMicros(salida){
+  // allowAutoModal=false se usa desde el polling en segundo plano: la
+  // disponibilidad puede cambiar sola cada 12s, pero no queremos que el
+  // popup de confirmación aparezca de la nada mientras la persona está
+  // distraída con otra cosa en la pantalla — el auto-open solo debe
+  // dispararse como consecuencia directa de una acción de la persona
+  // (elegir sede, cambiar cantidad, elegir el último nombre, filtrar).
+  async function loadMicros(salida, allowAutoModal){
+    if(allowAutoModal === undefined) allowAutoModal = true;
     var grid = $("#micro-grid");
     grid.innerHTML = '<div class="skeleton">Cargando micros…</div>';
     var res = await sb.from("lujan_micros").select("*").eq("salida", salida).order("label");
@@ -1469,15 +1481,21 @@
       return;
     }
     state.micros = res.data || [];
-    autoSeleccionarSiUnico();
+    if(allowAutoModal) autoAbrirModalSiUnico();
     renderMicros();
   }
 
-  // Si hay un solo micro elegible (con lugar para la cantidad pedida),
-  // lo preselecciona para que solo haga falta confirmar. No pisa una
-  // selección manual ya hecha por la persona.
-  function autoSeleccionarSiUnico(){
+  // Si sede + nombres ya están completos y hay un solo micro elegible (con
+  // lugar para la cantidad pedida), abre directamente el popup de
+  // confirmación para ese micro — no hace falta que la persona lo toque.
+  // No hace nada si el popup ya está abierto, si la persona ya lo canceló
+  // para esta selección, o si los campos previos todavía no están completos.
+  function autoAbrirModalSiUnico(){
+    if(microSelPendiente) return;
+    if(!$("#confirmar-micro-modal").hidden) return;
+    if(autoModalCancelado) return;
     if(state.microSel) return;
+    if(!camposCompletos()) return;
     var necesita = state.lugares || 1;
     var lista = state.micros;
     if(state.filtro){
@@ -1487,7 +1505,7 @@
       var disponibles = m.capacidad - m.ocupados;
       return disponibles > 0 && disponibles >= necesita;
     });
-    if(elegibles.length === 1) state.microSel = elegibles[0];
+    if(elegibles.length === 1) abrirConfirmarMicroModal(elegibles[0]);
   }
 
   function microBoxesHtml(disponibles, ocupados){
@@ -1573,6 +1591,18 @@
     });
   }
 
+  // Chequeo silencioso (sin mostrar error ni hacer scroll) de si sede +
+  // nombres ya están completos y sin repetidos. Se usa para decidir si
+  // corresponde abrir el popup de confirmación automáticamente.
+  function camposCompletos(){
+    if(!state.salida) return false;
+    if(state.nombres.some(function(n){ return !n.sel; })) return false;
+    var ids = state.nombres.map(function(n){ return n.sel.id; });
+    var hayRepetido = ids.some(function(id, i){ return ids.indexOf(id) !== i; });
+    if(hayRepetido) return false;
+    return true;
+  }
+
   // Valida sede y nombres ANTES de dejar elegir un micro (el micro es el
   // último paso: al confirmarlo en el popup se completa la reserva
   // directamente, sin un botón "Confirmar reserva" aparte). Si falta algo,
@@ -1609,39 +1639,56 @@
   }
 
   var microSelPendiente = null;
+  // Se pone en true cuando la persona cancela explícitamente el popup, para
+  // no reabrirlo solo de nuevo hasta que cambie algo relevante (sede,
+  // cantidad o algún nombre).
+  var autoModalCancelado = false;
   function abrirConfirmarMicroModal(m){
     microSelPendiente = m;
     $("#confirmar-micro-label").textContent = m.label;
+    // Mostramos siempre a nombre de quién se va a reservar, para poder
+    // detectar de un vistazo si quedó seleccionada la persona equivocada
+    // (clave si el popup se abrió solo).
+    var nombres = state.nombres.filter(function(n){ return n.sel; }).map(function(n){ return n.sel.apellido + ", " + n.sel.nombre; });
+    $("#confirmar-micro-nombres").textContent = nombres.length ? ("Para: " + nombres.join(" · ")) : "";
+    $("#confirmar-micro-error").innerHTML = "";
+    $("#reservar-error").innerHTML = "";
     $("#confirmar-micro-modal").hidden = false;
   }
   function cerrarConfirmarMicroModal(){
     $("#confirmar-micro-modal").hidden = true;
     microSelPendiente = null;
+    autoModalCancelado = true;
   }
   $("#confirmar-micro-cancelar").addEventListener("click", cerrarConfirmarMicroModal);
   $("#confirmar-micro-confirmar").addEventListener("click", async function(){
     if(!microSelPendiente) return;
-    state.microSel = microSelPendiente;
-    microSelPendiente = null;
+    var micro = microSelPendiente;
     var errBox = $("#confirmar-micro-error");
     errBox.innerHTML = "";
-    var idsSeleccionados = state.nombres.map(function(n){ return n.sel.id; });
-    var hayRepetido = idsSeleccionados.some(function(id, i){ return idsSeleccionados.indexOf(id) !== i; });
-    if(hayRepetido){
-      errBox.innerHTML = '<div class="error-box">Elegiste a la misma persona más de una vez en esta reserva.</div>';
+    // Revalidamos acá, no solo cuando se abrió el popup: si mientras estaba
+    // abierto la persona editó o borró un nombre (o quedó repetido), NO
+    // reservamos con datos viejos — cerramos el popup y llevamos al campo
+    // que hay que corregir.
+    if(!camposCompletos()){
+      cerrarConfirmarMicroModal();
+      validarCamposPrevios();
       return;
     }
+    var idsSeleccionados = state.nombres.map(function(n){ return n.sel.id; });
     var nombres = state.nombres.map(function(n){ return n.sel.apellido + ", " + n.sel.nombre; });
     var btn = $("#confirmar-micro-confirmar");
     btn.disabled = true;
     btn.textContent = "Reservando…";
     try{
       var res = await sb.rpc("lujan_reservar_lugares", {
-        p_micro_id: state.microSel.id,
+        p_micro_id: micro.id,
         p_nombres: nombres,
         p_padron_ids: idsSeleccionados
       });
       if(res.error) throw res.error;
+      state.microSel = micro;
+      microSelPendiente = null;
       state.lastReserva = {
         salida: res.data.salida,
         micro: res.data.micro_label,
@@ -1654,8 +1701,10 @@
       microsMapCache = null;
       loadContador();
     } catch(e){
+      // Dejamos microSelPendiente intacto (no se tocó state.microSel en
+      // ningún momento) para poder reintentar tocando el botón de nuevo,
+      // sin perder el micro elegido ni quedar en un estado inconsistente.
       errBox.innerHTML = '<div class="error-box">' + esc(e.message || "No pudimos completar la reserva. Puede que se hayan ocupado los últimos lugares — volvé a elegir el micro.") + '</div>';
-      state.microSel = null;
     } finally {
       btn.disabled = false;
       btn.textContent = "Confirmar reserva";
@@ -1665,7 +1714,7 @@
   function pollMicros(){
     stopPoll();
     state.pollTimer = setInterval(function(){
-      if(state.salida) loadMicros(state.salida);
+      if(state.salida) loadMicros(state.salida, false);
     }, 12000);
   }
   function stopPoll(){
@@ -1765,13 +1814,15 @@
     $("#cant-count").textContent = state.lugares;
   }
   function onCantidadChange(){
+    autoModalCancelado = false;
+    $("#reservar-error").innerHTML = "";
     renderCantidad();
     renderNombres();
     if(state.microSel && (state.microSel.capacidad - state.microSel.ocupados) < state.lugares){
       state.microSel = null; // ya no alcanza para la nueva cantidad, hay que elegir de nuevo
     }
     if(state.micros.length){
-      autoSeleccionarSiUnico();
+      autoAbrirModalSiUnico();
       renderMicros(); // recalcula qué micros alcanzan para la nueva cantidad
     }
   }
@@ -1799,6 +1850,8 @@
     state.salida = this.value || null;
     state.microSel = null;
     state.filtro = null;
+    autoModalCancelado = false;
+    $("#reservar-error").innerHTML = "";
     $("#filtro-activo").hidden = true;
     if(!state.salida){ $("#micro-grid").innerHTML = ""; return; }
     loadMicros(state.salida);
@@ -1808,7 +1861,7 @@
   $("#quitar-filtro").addEventListener("click", function(){
     state.filtro = null;
     $("#filtro-activo").hidden = true;
-    autoSeleccionarSiUnico();
+    autoAbrirModalSiUnico();
     renderMicros();
   });
 
@@ -1880,6 +1933,11 @@
             inp.closest(".name-input-row").classList.add("valida");
             box.hidden = true;
             box.innerHTML = "";
+            autoModalCancelado = false;
+            if(state.micros.length){
+              autoAbrirModalSiUnico();
+              renderMicros();
+            }
           });
         });
       }
