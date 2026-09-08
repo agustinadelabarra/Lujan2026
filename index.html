@@ -1098,6 +1098,18 @@
   </div>
 </div>
 
+<div class="modal-overlay no-print" id="confirmar-micro-modal" hidden>
+  <div class="modal-card">
+    <h3>Confirmar micro</h3>
+    <p>¿Confirmás <strong id="confirmar-micro-label">—</strong> como tu micro? Al confirmar, se completa tu reserva.</p>
+    <div id="confirmar-micro-error"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="confirmar-micro-cancelar" type="button">Cancelar</button>
+      <button class="btn btn-primary" id="confirmar-micro-confirmar" type="button">Confirmar reserva</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay no-print" id="coord-baja-modal" hidden>
   <div class="modal-card">
     <h3>Dar de baja reserva</h3>
@@ -1209,10 +1221,6 @@
       <div class="micro-grid" id="micro-grid"></div>
 
       <div id="reservar-error"></div>
-
-      <div class="actions-row">
-        <button class="btn btn-primary" id="confirmar-reserva">Confirmar reserva</button>
-      </div>
     </section>
 
     <!-- STEP 2: comprobante -->
@@ -1245,7 +1253,7 @@
     <h2>Dar de baja tu reserva</h2>
     <p class="hint">Ingresá el código individual que te dimos al reservar (es por persona, no por grupo).</p>
     <div class="cancel-form-standalone" id="cancel-form-standalone">
-      <input type="text" id="cancel-codigo" placeholder="Código de baja (ej: LJ-4X9KQ)" class="mono">
+      <input type="text" id="cancel-codigo" placeholder="Código de baja (ej: A1B2)" class="mono">
       <button class="btn btn-primary" id="cancel-buscar">Buscar</button>
     </div>
     <div id="cancel-confirm" class="cancel-confirm-box" hidden>
@@ -1536,8 +1544,13 @@
       card.addEventListener("click", function(e){
         if(e.target.closest(".ver-participantes-btn") || e.target.closest(".participantes-list")) return;
         if(!seleccionable) return;
-        state.microSel = seleccionado ? null : m;
-        renderMicros();
+        if(seleccionado){
+          state.microSel = null;
+          renderMicros();
+        } else {
+          if(!validarCamposPrevios()) return;
+          abrirConfirmarMicroModal(m);
+        }
       });
       card.addEventListener("keydown", function(e){
         if((e.key === "Enter" || e.key === " ") && seleccionable && e.target === card){
@@ -1559,6 +1572,95 @@
       grid.appendChild(card);
     });
   }
+
+  // Valida sede y nombres ANTES de dejar elegir un micro (el micro es el
+  // último paso: al confirmarlo en el popup se completa la reserva
+  // directamente, sin un botón "Confirmar reserva" aparte). Si falta algo,
+  // no deja elegir el micro y lleva a la persona al campo vacío.
+  function validarCamposPrevios(){
+    var errBox = $("#reservar-error");
+    errBox.innerHTML = "";
+    if(!state.salida){
+      errBox.innerHTML = '<div class="error-box">Elegí un lugar de salida.</div>';
+      var sel = $("#sede-select");
+      sel.scrollIntoView({behavior:"smooth", block:"center"});
+      sel.focus();
+      return false;
+    }
+    var idxFalta = state.nombres.findIndex(function(n){ return !n.sel; });
+    if(idxFalta !== -1){
+      errBox.innerHTML = '<div class="error-box">Elegí cada nombre de la lista del padrón (no se puede escribir libremente). Si alguien no aparece, avisá a la organización.</div>';
+      var inputs = $all("#names-list .name-search-input");
+      var inp = inputs[idxFalta];
+      if(inp){
+        inp.scrollIntoView({behavior:"smooth", block:"center"});
+        inp.focus();
+      }
+      return false;
+    }
+    var idsSeleccionados = state.nombres.map(function(n){ return n.sel.id; });
+    var hayRepetido = idsSeleccionados.some(function(id, i){ return idsSeleccionados.indexOf(id) !== i; });
+    if(hayRepetido){
+      errBox.innerHTML = '<div class="error-box">Elegiste a la misma persona más de una vez en esta reserva.</div>';
+      $("#names-list").scrollIntoView({behavior:"smooth", block:"center"});
+      return false;
+    }
+    return true;
+  }
+
+  var microSelPendiente = null;
+  function abrirConfirmarMicroModal(m){
+    microSelPendiente = m;
+    $("#confirmar-micro-label").textContent = m.label;
+    $("#confirmar-micro-modal").hidden = false;
+  }
+  function cerrarConfirmarMicroModal(){
+    $("#confirmar-micro-modal").hidden = true;
+    microSelPendiente = null;
+  }
+  $("#confirmar-micro-cancelar").addEventListener("click", cerrarConfirmarMicroModal);
+  $("#confirmar-micro-confirmar").addEventListener("click", async function(){
+    if(!microSelPendiente) return;
+    state.microSel = microSelPendiente;
+    microSelPendiente = null;
+    var errBox = $("#confirmar-micro-error");
+    errBox.innerHTML = "";
+    var idsSeleccionados = state.nombres.map(function(n){ return n.sel.id; });
+    var hayRepetido = idsSeleccionados.some(function(id, i){ return idsSeleccionados.indexOf(id) !== i; });
+    if(hayRepetido){
+      errBox.innerHTML = '<div class="error-box">Elegiste a la misma persona más de una vez en esta reserva.</div>';
+      return;
+    }
+    var nombres = state.nombres.map(function(n){ return n.sel.apellido + ", " + n.sel.nombre; });
+    var btn = $("#confirmar-micro-confirmar");
+    btn.disabled = true;
+    btn.textContent = "Reservando…";
+    try{
+      var res = await sb.rpc("lujan_reservar_lugares", {
+        p_micro_id: state.microSel.id,
+        p_nombres: nombres,
+        p_padron_ids: idsSeleccionados
+      });
+      if(res.error) throw res.error;
+      state.lastReserva = {
+        salida: res.data.salida,
+        micro: res.data.micro_label,
+        tickets: res.data.tickets || []
+      };
+      $("#confirmar-micro-modal").hidden = true;
+      renderComprobante();
+      stopPoll();
+      setStep(2);
+      microsMapCache = null;
+      loadContador();
+    } catch(e){
+      errBox.innerHTML = '<div class="error-box">' + esc(e.message || "No pudimos completar la reserva. Puede que se hayan ocupado los últimos lugares — volvé a elegir el micro.") + '</div>';
+      state.microSel = null;
+    } finally {
+      btn.disabled = false;
+      btn.textContent = "Confirmar reserva";
+    }
+  });
 
   function pollMicros(){
     stopPoll();
@@ -1731,7 +1833,7 @@
       row.innerHTML =
         '<span class="num mono">' + (idx+1) + '</span>' +
         '<div class="name-autocomplete">' +
-          '<input type="text" class="name-search-input" placeholder="Escribí para buscar en el padrón…" autocomplete="off" data-idx="' + idx + '" value="' + esc(n.texto) + '">' +
+          '<input type="text" class="name-search-input" placeholder="Escribí el nombre del peregrino inscripto en el form" autocomplete="off" data-idx="' + idx + '" value="' + esc(n.texto) + '">' +
           '<div class="name-suggestions" hidden></div>' +
         '</div>' +
         (state.nombres.length > 1 ? '<button type="button" class="remove-name-btn" data-idx="' + idx + '" aria-label="Quitar este lugar">✖︎</button>' : '');
@@ -1749,14 +1851,7 @@
       var idx = parseInt(inp.getAttribute("data-idx"), 10);
       var box = inp.parentElement.querySelector(".name-suggestions");
 
-      inp.addEventListener("input", async function(){
-        state.nombres[idx].texto = inp.value;
-        state.nombres[idx].sel = null;
-        inp.closest(".name-input-row").classList.remove("valida");
-        $("#reservar-error").innerHTML = "";
-        var lista = await ensurePadron();
-        var matches = buscarEnPadron(inp.value, lista);
-        if(!inp.value.trim()){ box.hidden = true; box.innerHTML = ""; return; }
+      function pintarLista(matches){
         if(matches.length === 0){
           box.innerHTML = '<div class="name-suggestion-empty">No encontramos a nadie con ese nombre en el padrón. Revisá que esté bien escrito, o consultá con la organización.</div>';
           box.hidden = false;
@@ -1787,69 +1882,37 @@
             box.innerHTML = "";
           });
         });
+      }
+
+      inp.addEventListener("input", async function(){
+        state.nombres[idx].texto = inp.value;
+        state.nombres[idx].sel = null;
+        inp.closest(".name-input-row").classList.remove("valida");
+        $("#reservar-error").innerHTML = "";
+        var lista = await ensurePadron();
+        if(!inp.value.trim()){
+          pintarLista(lista.slice(0, 4));
+          return;
+        }
+        var matches = buscarEnPadron(inp.value, lista);
+        pintarLista(matches);
       });
 
       inp.addEventListener("blur", function(){
         // pequeño delay para que el click en una sugerencia registre antes de ocultar
         setTimeout(function(){ box.hidden = true; }, 150);
       });
-      inp.addEventListener("focus", function(){
-        if(!box.innerHTML) return;
-        if(!state.nombres[idx].sel) box.hidden = false;
+      inp.addEventListener("focus", async function(){
+        if(state.nombres[idx].sel) return;
+        var lista = await ensurePadron();
+        if(!inp.value.trim()){
+          pintarLista(lista.slice(0, 4));
+        } else {
+          pintarLista(buscarEnPadron(inp.value, lista));
+        }
       });
     });
   }
-
-  // ---- confirm reservation ----
-  $("#confirmar-reserva").addEventListener("click", async function(){
-    var errBox = $("#reservar-error");
-    errBox.innerHTML = "";
-    if(!state.salida){
-      errBox.innerHTML = '<div class="error-box">Elegí un lugar de salida.</div>';
-      return;
-    }
-    if(!state.microSel){
-      errBox.innerHTML = '<div class="error-box">Elegí un micro con lugar disponible.</div>';
-      return;
-    }
-    if(state.nombres.some(function(n){ return !n.sel; })){
-      errBox.innerHTML = '<div class="error-box">Elegí cada nombre de la lista del padrón (no se puede escribir libremente). Si alguien no aparece, avisá a la organización.</div>';
-      return;
-    }
-    var idsSeleccionados = state.nombres.map(function(n){ return n.sel.id; });
-    var hayRepetido = idsSeleccionados.some(function(id, i){ return idsSeleccionados.indexOf(id) !== i; });
-    if(hayRepetido){
-      errBox.innerHTML = '<div class="error-box">Elegiste a la misma persona más de una vez en esta reserva.</div>';
-      return;
-    }
-    var nombres = state.nombres.map(function(n){ return n.sel.apellido + ", " + n.sel.nombre; });
-    var btn = $("#confirmar-reserva");
-    btn.disabled = true;
-    btn.textContent = "Reservando…";
-    try{
-      var res = await sb.rpc("lujan_reservar_lugares", {
-        p_micro_id: state.microSel.id,
-        p_nombres: nombres,
-        p_padron_ids: idsSeleccionados
-      });
-      if(res.error) throw res.error;
-      state.lastReserva = {
-        salida: res.data.salida,
-        micro: res.data.micro_label,
-        tickets: res.data.tickets || []
-      };
-      renderComprobante();
-      stopPoll();
-      setStep(2);
-      microsMapCache = null;
-      loadContador();
-    } catch(e){
-      errBox.innerHTML = '<div class="error-box">' + esc(e.message || "No pudimos completar la reserva. Puede que se hayan ocupado los últimos lugares — volvé a elegir el micro.") + '</div>';
-    } finally {
-      btn.disabled = false;
-      btn.textContent = "Confirmar reserva";
-    }
-  });
 
   function renderComprobante(){
     var r = state.lastReserva;
