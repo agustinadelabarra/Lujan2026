@@ -1063,11 +1063,12 @@
     text-align:center;
   }
 
+  .vertexsur-wrap{
+    position:relative;
+    text-align:center;
+    margin:36px 0 4px;
+  }
   .vertexsur-mark{
-    position:fixed;
-    left:50%;
-    bottom:10px;
-    transform:translateX(-50%);
     background:none;
     border:none;
     padding:6px 10px;
@@ -1078,14 +1079,14 @@
     line-height:1;
     color:var(--ink-soft);
     opacity:.7;
-    z-index:40;
   }
   .vertexsur-mark:hover{opacity:1;}
   .vertexsur-tooltip{
-    position:fixed;
+    position:absolute;
     left:50%;
-    bottom:38px;
+    bottom:100%;
     transform:translateX(-50%);
+    margin-bottom:8px;
     background:var(--ink);
     color:var(--surface);
     font-size:var(--fs-xs);
@@ -1093,7 +1094,7 @@
     border-radius:6px;
     box-shadow:var(--shadow);
     white-space:nowrap;
-    z-index:41;
+    z-index:5;
   }
   .vertexsur-tooltip[hidden]{display:none;}
 
@@ -1340,10 +1341,12 @@
     <div id="cancel-result"></div>
   </section>
 
-</main>
+  <div class="vertexsur-wrap no-print">
+    <div class="vertexsur-tooltip" id="vertexsur-tooltip" hidden>Powered by VertexSur</div>
+    <button type="button" class="vertexsur-mark" id="vertexsur-mark">@</button>
+  </div>
 
-<div class="vertexsur-tooltip no-print" id="vertexsur-tooltip" hidden>Powered by VertexSur</div>
-<button type="button" class="vertexsur-mark no-print" id="vertexsur-mark">@</button>
+</main>
 
 <script>
 (function(){
