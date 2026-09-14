@@ -3149,7 +3149,14 @@
       porSalida[m.salida].push(m);
     });
     cont.innerHTML = "";
-    Object.keys(porSalida).forEach(function(salida){
+    // Orden fijo de sedes (SEDES_MICROS), no el orden en que devuelve la
+    // fila la consulta — sin un "order by" explícito, Supabase/Postgres no
+    // garantiza el mismo orden entre pedidos, así que sin esto VL/ND podían
+    // aparecer intercambiados cada vez que se recargaban los datos (por
+    // ejemplo, tras dar de baja a alguien).
+    var sedesOrdenadas = SEDES_MICROS.filter(function(s){ return porSalida[s]; })
+      .concat(Object.keys(porSalida).filter(function(s){ return SEDES_MICROS.indexOf(s) === -1; }));
+    sedesOrdenadas.forEach(function(salida){
       var micrositos = porSalida[salida].slice().sort(function(a,b){ return (a.label||"").localeCompare(b.label||""); });
       var group = document.createElement("div");
       group.className = "micro-overview-group";
@@ -3177,7 +3184,7 @@
   // el "Micro 5", el próximo que se agregue (en cualquier sede) reutiliza
   // el 5 en vez de seguir siempre para adelante.
   var SEDE_ABREV = { "Vicente López": "VL", "Nordelta": "ND" };
-  var SEDES_MICROS = ["Vicente López", "Nordelta"];
+  var SEDES_MICROS = ["Nordelta", "Vicente López"];
   // Rango de numeración reservado por sede (definido en el chat): Nordelta
   // usa 1-5, Vicente López usa 6-10. proximoNumeroMicro busca el número
   // libre más chico DENTRO del rango de la sede indicada (no un contador
