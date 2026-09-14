@@ -19,7 +19,7 @@
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Raleway:wght@200;300;400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Raleway:wght@200;300;400;500&family=Outfit:wght@500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -140,6 +140,14 @@
   }
   .mono{
     font-family:"Raleway", sans-serif;
+    font-variant-numeric: tabular-nums;
+  }
+  /* Tipografía Outfit en negrita para el código de reserva del
+     comprobante — más legible que Raleway para distinguir letras/números
+     parecidos (0/O, 1/I/l). */
+  .codigo-reserva{
+    font-family:"Outfit", sans-serif;
+    font-weight:700;
     font-variant-numeric: tabular-nums;
   }
   a{color:var(--primary);}
@@ -684,6 +692,9 @@
     color:var(--ink-soft);
     font-size:var(--fs-xs);
     flex-shrink:0;
+    font-family:"Outfit", sans-serif;
+    font-weight:500;
+    letter-spacing:.02em;
   }
   .participantes-list .p-empty{
     font-size:var(--fs-sm);
@@ -1080,9 +1091,9 @@
     font-weight:400;
   }
   .ticket-lite .code-tag{
-    font-family:"Raleway", sans-serif;
+    font-family:"Outfit", sans-serif;
     font-size:var(--fs-md);
-    font-weight:500;
+    font-weight:700;
     color:var(--accent);
     letter-spacing:.04em;
   }
