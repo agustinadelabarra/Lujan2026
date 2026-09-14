@@ -891,6 +891,67 @@
   .switch-wrap input:checked + .switch-track .switch-thumb{left:18px;}
   .switch-text{font-size:var(--fs-xs); color:var(--ink); font-weight:400;}
   .coord-app-toggle-hint{font-size:var(--fs-2xs); color:var(--ink-soft); padding-left:46px;}
+
+  /* ---- modal ancho (administrar micros / asignación aleatoria) ----
+     A diferencia de los modales cortos (PIN, confirmaciones), estos pueden
+     tener bastante contenido (varias sedes con varios micros cada una, o
+     una vista previa con varias tarjetas) y no entrar en la altura de la
+     pantalla, sobre todo en mobile — por eso el propio card scrollea
+     (bug reportado: no se podía llegar al botón de "Agregar micro" porque
+     el modal se cortaba contra el borde de la pantalla, sin scroll). */
+  .modal-card.modal-wide{
+    max-width:480px; text-align:left;
+    max-height:calc(100vh - 40px); overflow-y:auto; -webkit-overflow-scrolling:touch;
+  }
+  .modal-card.modal-wide > h3{text-align:center;}
+  .modal-card.modal-wide > p{text-align:center;}
+
+  /* ---- administrar micros (Coordinadoras) ---- */
+  .micros-admin-sede{margin-bottom:18px;}
+  .micros-admin-sede:last-of-type{margin-bottom:0;}
+  .micros-admin-sede h4{
+    margin:0 0 8px; font-family:"Raleway", sans-serif; font-size:var(--fs-sm);
+    font-weight:500; color:var(--ink-soft); text-transform:uppercase; letter-spacing:.02em;
+  }
+  .micros-admin-list{display:flex; flex-direction:column; gap:6px; margin-bottom:10px;}
+  .micros-admin-row{
+    display:flex; align-items:center; gap:10px;
+    padding:9px 10px; border:1.5px solid var(--line); border-radius:8px;
+    font-size:var(--fs-sm);
+  }
+  .micros-admin-row .label{flex:1; font-weight:500;}
+  .micros-admin-row .cap{color:var(--ink-soft); font-size:var(--fs-xs); white-space:nowrap; font-variant-numeric:tabular-nums;}
+  .micros-admin-row .del-btn{
+    flex-shrink:0; width:32px; height:32px; border-radius:8px;
+    border:1.5px solid var(--line); background:var(--surface); color:var(--accent);
+    font-size:var(--fs-sm); cursor:pointer; display:flex; align-items:center; justify-content:center;
+  }
+  .micros-admin-row .del-btn:hover{border-color:var(--accent); background:var(--accent-tint);}
+  .micros-admin-row .del-btn:disabled{opacity:.35; cursor:not-allowed;}
+  .micros-admin-empty{color:var(--ink-soft); font-size:var(--fs-xs); padding:4px 2px;}
+  .micros-admin-add{display:flex; align-items:center; gap:8px;}
+  .micros-admin-add input[type="number"]{
+    width:70px; padding:8px 10px; border:1.5px solid var(--line); border-radius:8px;
+    font-size:var(--fs-sm); background:var(--surface); color:var(--ink); font-variant-numeric:tabular-nums;
+  }
+  .micros-admin-add .btn{flex:1;}
+  .micros-admin-error{color:var(--accent); font-size:var(--fs-xs); margin-top:6px; min-height:16px;}
+
+  /* ---- asignación aleatoria de no inscriptos (Coordinadoras) ---- */
+  .asignar-resumen{font-size:var(--fs-sm); color:var(--ink-soft); margin-bottom:14px; text-align:center;}
+  .asignar-preview{display:flex; flex-direction:column; gap:10px; max-height:260px; overflow-y:auto; margin-bottom:14px;}
+  .asignar-preview-micro{border:1.5px solid var(--line); border-radius:8px; padding:10px 12px;}
+  .asignar-preview-micro .titulo{display:flex; align-items:center; justify-content:space-between; gap:8px; font-weight:500; font-size:var(--fs-sm); margin-bottom:4px;}
+  .asignar-preview-micro .nombres{font-size:var(--fs-xs); color:var(--ink-soft); line-height:1.5; margin:0; padding-left:18px;}
+  .asignar-preview-sin-lugar{border:1.5px solid var(--accent); border-radius:8px; padding:10px 12px; background:var(--accent-tint);}
+  .asignar-preview-sin-lugar .titulo{display:flex; align-items:center; justify-content:space-between; gap:8px; font-weight:500; font-size:var(--fs-sm); color:var(--accent); margin-bottom:4px;}
+  .asignar-preview-sin-lugar .nombres{font-size:var(--fs-xs); color:var(--ink); line-height:1.5; margin:0; padding-left:18px;}
+  .asignar-copiar-btn{flex:0 0 auto; border:1.5px solid var(--line); background:#fff; border-radius:6px; padding:2px 8px; font-size:var(--fs-xs); color:var(--ink-soft); cursor:pointer; white-space:nowrap;}
+  .asignar-copiar-btn:hover{border-color:var(--accent); color:var(--accent);}
+  .asignar-copiar-btn.copiado{border-color:#2e8b57; color:#2e8b57;}
+  .asignar-copiar-todo-row{display:flex; justify-content:flex-end; margin-bottom:8px;}
+  .asignar-copiar-todo-row .copiado{border-color:#2e8b57 !important; color:#2e8b57 !important;}
+  .asignar-error{color:var(--accent); font-size:var(--fs-xs); margin-top:6px; min-height:16px;}
   #coord-listado .participantes-list{max-height:none; overflow-y:visible;}
   .participantes-list .coord-p-item{
     flex-wrap:nowrap; overflow-x:auto; gap:10px; padding:12px 0;
@@ -1142,6 +1203,8 @@
            acá, no sueltos en la pantalla, para no llamar tanto la atención. -->
       <button type="button" id="coord-descargar" class="menu-coord-item" hidden>📥 Vista offline</button>
       <button type="button" id="coord-exportar" class="menu-coord-item" hidden>⬇ Excel</button>
+      <button type="button" id="coord-micros-admin" class="menu-coord-item" hidden>🚌 Micros</button>
+      <button type="button" id="coord-asignar-aleatorio" class="menu-coord-item" hidden>🎲 Asignar no inscriptos</button>
       <div class="menu-coord-toggle-row menu-coord-item" hidden>
         <label class="switch-wrap">
           <input type="checkbox" id="coord-app-toggle" checked>
@@ -1188,6 +1251,48 @@
     <div class="modal-actions">
       <button class="btn btn-ghost" id="coord-baja-cancelar" type="button">Volver</button>
       <button class="btn btn-danger" id="coord-baja-confirmar" type="button">Dar de baja</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay no-print" id="micros-admin-modal" hidden>
+  <div class="modal-card modal-wide">
+    <h3>Micros</h3>
+    <p>Agregar o borrar micros por sede. Un micro con pasajeros asignados no se puede borrar.</p>
+    <div id="micros-admin-cuerpo"></div>
+    <div class="micros-admin-error" id="micros-admin-error"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="micros-admin-cerrar" type="button">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay no-print" id="micro-borrar-modal" hidden>
+  <div class="modal-card">
+    <h3>Borrar micro</h3>
+    <p>¿Confirmás borrar <strong id="micro-borrar-label">—</strong>? Esta acción no se puede deshacer.</p>
+    <div class="pin-error" id="micro-borrar-error"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="micro-borrar-cancelar" type="button">Volver</button>
+      <button class="btn btn-danger" id="micro-borrar-confirmar" type="button">Borrar micro</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay no-print" id="asignar-aleatorio-modal" hidden>
+  <div class="modal-card modal-wide">
+    <h3>Asignar no inscriptos</h3>
+    <p id="asignar-aleatorio-intro">Asigna al azar, por lugar de salida, a los peregrinos que todavía no tienen ningún micro. Se llena un micro por completo antes de pasar al siguiente.</p>
+    <div class="asignar-resumen" id="asignar-resumen"></div>
+    <div class="asignar-copiar-todo-row" id="asignar-copiar-todo-row" hidden>
+      <button type="button" class="btn btn-ghost btn-sm" id="asignar-copiar-todo">Copiar todo</button>
+    </div>
+    <div id="asignar-preview" class="asignar-preview" hidden></div>
+    <div class="asignar-error" id="asignar-error"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="asignar-aleatorio-cancelar" type="button">Cancelar</button>
+      <button class="btn btn-primary" id="asignar-aleatorio-generar" type="button">Generar propuesta</button>
+      <button class="btn btn-primary" id="asignar-aleatorio-confirmar" type="button" hidden>Confirmar asignación</button>
     </div>
   </div>
 </div>
@@ -1326,7 +1431,7 @@
   <section class="panel" id="screen-baja" hidden>
     <button class="btn-text back-home" type="button">← Volver al inicio</button>
     <h2>Dar de baja tu reserva</h2>
-    <p class="hint">Ingresá el código individual que te dimos al reservar (es por persona, no por grupo).</p>
+    <p class="hint">Ingresá el código individual que te dimos al reservar (es por peregrino, no por grupo).</p>
     <div class="cancel-form-standalone" id="cancel-form-standalone">
       <input type="text" id="cancel-codigo" placeholder="Código de baja (ej: A1B2)" class="mono">
       <button class="btn btn-primary" id="cancel-buscar">Buscar</button>
@@ -1757,7 +1862,7 @@
     var idsSeleccionados = state.nombres.map(function(n){ return n.sel.id; });
     var hayRepetido = idsSeleccionados.some(function(id, i){ return idsSeleccionados.indexOf(id) !== i; });
     if(hayRepetido){
-      errBox.innerHTML = '<div class="error-box">Elegiste a la misma persona más de una vez en esta reserva.</div>';
+      errBox.innerHTML = '<div class="error-box">Elegiste al mismo peregrino más de una vez en esta reserva.</div>';
       $("#names-list").scrollIntoView({behavior:"smooth", block:"center"});
       return false;
     }
@@ -2869,7 +2974,7 @@
         }
       });
       lineasTotal.push("");
-      lineasTotal.push("Peregrinos del padrón sin inscribirse todavía: " + noInscriptos.length + " (ver hoja \"No inscriptos\")");
+      lineasTotal.push("Peregrinos sin inscribirse todavía: " + noInscriptos.length + " (ver hoja \"No inscriptos\")");
 
       // Rangos de filas (0-based, por hoja) que sí son tablas de verdad —
       // acá vamos a aplicar la grilla real al exportar, y solo acá.
@@ -2910,7 +3015,7 @@
         return p.dieta_especial && normalizarDieta(p.dieta_especial).toLowerCase() === "sin gluten";
       }).length;
       var filasNoInsc = [];
-      filasNoInsc.push(["NO INSCRIPTOS — Peregrinos del padrón sin lugar reservado"]);
+      filasNoInsc.push(["NO INSCRIPTOS — Peregrinos sin lugar reservado"]);
       filasNoInsc.push([]);
       filasNoInsc.push(["Total sin inscribirse: " + noInscriptos.length]);
       filasNoInsc.push(["Total con menú especial (sin gluten): " + dietaNoInsc]);
@@ -3052,6 +3157,396 @@
     });
   }
 
+  // ---- Coordinadoras: administrar micros (agregar / borrar) ----
+  // La nomenclatura de los micros ("Micro <N> <abreviatura de sede>") ya
+  // está definida y en uso (ver lujan_micros): el número es correlativo
+  // entre TODAS las sedes (no se reinicia por sede). Para el próximo micro
+  // usamos el número más chico que no esté en uso por ningún micro
+  // existente (no simplemente "el más alto usado + 1") — así, si se borró
+  // el "Micro 5", el próximo que se agregue (en cualquier sede) reutiliza
+  // el 5 en vez de seguir siempre para adelante.
+  var SEDE_ABREV = { "Vicente López": "VL", "Nordelta": "ND" };
+  var SEDES_MICROS = ["Vicente López", "Nordelta"];
+  // Rango de numeración reservado por sede (definido en el chat): Nordelta
+  // usa 1-5, Vicente López usa 6-10. proximoNumeroMicro busca el número
+  // libre más chico DENTRO del rango de la sede indicada (no un contador
+  // global), reutilizando huecos si se borró un micro de esa sede.
+  var SEDE_RANGO_MICROS = { "Nordelta": [1, 5], "Vicente López": [6, 10] };
+
+  function proximoNumeroMicro(micros, sede){
+    var usados = {};
+    (micros || []).forEach(function(m){
+      var match = /Micro\s+(\d+)/.exec(m.label || "");
+      if(match) usados[parseInt(match[1], 10)] = true;
+    });
+    var rango = SEDE_RANGO_MICROS[sede];
+    if(!rango){
+      var n = 1;
+      while(usados[n]) n++;
+      return n;
+    }
+    for(var i = rango[0]; i <= rango[1]; i++){
+      if(!usados[i]) return i;
+    }
+    return null; // rango de la sede agotado
+  }
+
+  function numeroDeLabel(label){
+    var match = /Micro\s+(\d+)/.exec(label || "");
+    return match ? parseInt(match[1], 10) : 0;
+  }
+
+  function renderMicrosAdmin(data){
+    var cont = $("#micros-admin-cuerpo");
+    if(!cont) return;
+    var micros = (data && data.micros) || [];
+    var porSalida = {};
+    micros.forEach(function(m){
+      if(!porSalida[m.salida]) porSalida[m.salida] = [];
+      porSalida[m.salida].push(m);
+    });
+    cont.innerHTML = "";
+    SEDES_MICROS.forEach(function(sede){
+      var lista = (porSalida[sede] || []).slice().sort(function(a,b){ return numeroDeLabel(a.label) - numeroDeLabel(b.label); });
+      var wrap = document.createElement("div");
+      wrap.className = "micros-admin-sede";
+      var h = document.createElement("h4");
+      h.textContent = sede;
+      wrap.appendChild(h);
+      var listEl = document.createElement("div");
+      listEl.className = "micros-admin-list";
+      if(!lista.length){
+        var vacio = document.createElement("div");
+        vacio.className = "micros-admin-empty";
+        vacio.textContent = "Todavía no hay micros en esta sede.";
+        listEl.appendChild(vacio);
+      } else {
+        lista.forEach(function(m){
+          var ocupados = m.ocupados || 0;
+          var row = document.createElement("div");
+          row.className = "micros-admin-row";
+          row.innerHTML =
+            '<span class="label">' + esc(m.label) + '</span>' +
+            '<span class="cap">' + ocupados + '/' + (m.capacidad || 0) + '</span>' +
+            '<button type="button" class="del-btn" data-micro-id="' + m.id + '" data-micro-label="' + esc(m.label) + '" ' +
+            (ocupados > 0 ? 'disabled title="Tiene pasajeros asignados: primero reasignalos o daloslos de baja desde el listado del micro"' : 'title="Borrar micro"') +
+            '>🗑</button>';
+          listEl.appendChild(row);
+        });
+      }
+      wrap.appendChild(listEl);
+      var addRow = document.createElement("div");
+      addRow.className = "micros-admin-add";
+      addRow.innerHTML =
+        '<input type="number" min="1" max="200" value="55" aria-label="Capacidad del nuevo micro">' +
+        '<button type="button" class="btn btn-ghost btn-sm micros-admin-add-btn" data-sede="' + esc(sede) + '">+ Agregar micro</button>';
+      wrap.appendChild(addRow);
+      cont.appendChild(wrap);
+    });
+  }
+
+  function abrirMicrosAdminModal(){
+    $("#micros-admin-error").textContent = "";
+    renderMicrosAdmin(coordUltimoData || coordGetCache());
+    $("#micros-admin-modal").hidden = false;
+  }
+  $("#coord-micros-admin").addEventListener("click", function(){ cerrarMenu(); abrirMicrosAdminModal(); });
+  $("#micros-admin-cerrar").addEventListener("click", function(){ $("#micros-admin-modal").hidden = true; });
+
+  $("#micros-admin-cuerpo").addEventListener("click", async function(e){
+    var addBtn = e.target.closest(".micros-admin-add-btn");
+    if(addBtn){
+      var sede = addBtn.getAttribute("data-sede");
+      var wrap = addBtn.closest(".micros-admin-sede");
+      var input = wrap ? wrap.querySelector('input[type="number"]') : null;
+      var capacidad = input ? parseInt(input.value, 10) : 55;
+      if(!capacidad || capacidad < 1){
+        $("#micros-admin-error").textContent = "La capacidad tiene que ser un número mayor a 0.";
+        return;
+      }
+      var data = coordUltimoData || coordGetCache();
+      var numero = proximoNumeroMicro(data && data.micros, sede);
+      if(numero === null){
+        $("#micros-admin-error").textContent = "Ya se usaron todos los números reservados para " + sede + ". Avisale al organizador para ampliar el rango.";
+        return;
+      }
+      var abrev = SEDE_ABREV[sede] || "";
+      var label = "Micro " + numero + (abrev ? " " + abrev : "");
+      addBtn.disabled = true;
+      $("#micros-admin-error").textContent = "";
+      try{
+        var res = await sb.rpc("lujan_admin_agregar_micro", { p_pin: ADMIN_PIN, p_salida: sede, p_label: label, p_capacidad: capacidad });
+        if(res.error) throw res.error;
+        trackEvent('micro_agregado', { salida: sede, label: label, capacidad: capacidad });
+        await loadCoordinadoras();
+        renderMicrosAdmin(coordUltimoData);
+      } catch(err){
+        $("#micros-admin-error").textContent = (err && err.message) || "No pudimos agregar el micro. Revisá la conexión e intentá de nuevo.";
+      } finally {
+        addBtn.disabled = false;
+      }
+      return;
+    }
+    var delBtn = e.target.closest(".del-btn");
+    if(delBtn && !delBtn.disabled){
+      $("#micro-borrar-label").textContent = delBtn.getAttribute("data-micro-label");
+      $("#micro-borrar-error").textContent = "";
+      microBorrarPendiente = { id: delBtn.getAttribute("data-micro-id"), label: delBtn.getAttribute("data-micro-label") };
+      $("#micro-borrar-modal").hidden = false;
+    }
+  });
+
+  var microBorrarPendiente = null;
+  $("#micro-borrar-cancelar").addEventListener("click", function(){ $("#micro-borrar-modal").hidden = true; microBorrarPendiente = null; });
+  $("#micro-borrar-confirmar").addEventListener("click", async function(){
+    if(!microBorrarPendiente) return;
+    var btn = this;
+    btn.disabled = true;
+    $("#micro-borrar-error").textContent = "";
+    try{
+      var res = await sb.rpc("lujan_admin_borrar_micro", { p_pin: ADMIN_PIN, p_micro_id: parseInt(microBorrarPendiente.id, 10) });
+      if(res.error) throw res.error;
+      trackEvent('micro_borrado', { micro_id: microBorrarPendiente.id, label: microBorrarPendiente.label });
+      var labelBorrado = microBorrarPendiente.label;
+      $("#micro-borrar-modal").hidden = true;
+      microBorrarPendiente = null;
+      await loadCoordinadoras();
+      renderMicrosAdmin(coordUltimoData);
+      coordSetStatus("Micro borrado: " + labelBorrado, "ok");
+    } catch(err){
+      $("#micro-borrar-error").textContent = (err && err.message) || "No pudimos borrar el micro. Revisá la conexión e intentá de nuevo.";
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  // ---- Coordinadoras: asignar al azar, por lugar de salida, a los
+  // peregrinos del padrón que todavía no tienen ningún micro ----
+  var asignarPropuesta = null; // { porMicro:[{micro, personas:[]}], sinLugar:[{sede, personas:[]}] }
+
+  function nombreCompletoPadron(p){
+    var ap = (p.apellido || "").trim();
+    var no = (p.nombre || "").trim();
+    return (ap && no) ? (ap + ", " + no) : (ap || no || "Sin nombre");
+  }
+
+  function mezclarAlAzar(lista){
+    var arr = lista.slice();
+    for(var i = arr.length - 1; i > 0; i--){
+      var j = Math.floor(Math.random() * (i + 1));
+      var tmp = arr[i]; arr[i] = arr[j]; arr[j] = tmp;
+    }
+    return arr;
+  }
+
+  // Arma una propuesta de asignación: agrupa a los no inscriptos por su
+  // lugar de salida, los mezcla al azar, y los va poniendo en los micros de
+  // esa sede que tengan lugar, llenando uno por completo antes de pasar al
+  // siguiente (en vez de repartirlos parejo entre todos). Si no alcanzan
+  // los lugares de ninguna sede, esas personas quedan en `sinLugar`.
+  function armarPropuestaAleatoria(data){
+    var noInscriptos = coordCalcularNoInscriptos(data);
+    var porSede = {};
+    noInscriptos.forEach(function(p){
+      var sede = p.salida_micro || "";
+      if(!porSede[sede]) porSede[sede] = [];
+      porSede[sede].push(p);
+    });
+    var porMicro = [];
+    var sinLugar = [];
+    Object.keys(porSede).forEach(function(sede){
+      var personas = mezclarAlAzar(porSede[sede]);
+      var micros = (data.micros || []).filter(function(m){ return m.salida === sede; })
+        .slice().sort(function(a,b){ return numeroDeLabel(a.label) - numeroDeLabel(b.label); });
+      var libres = micros.map(function(m){ return Math.max(0, (m.capacidad || 0) - (m.ocupados || 0)); });
+      var idx = 0;
+      personas.forEach(function(p){
+        while(idx < micros.length && libres[idx] <= 0) idx++;
+        if(idx >= micros.length){
+          var grupoSinLugar = sinLugar.filter(function(s){ return s.sede === sede; })[0];
+          if(!grupoSinLugar){ grupoSinLugar = { sede: sede, personas: [] }; sinLugar.push(grupoSinLugar); }
+          grupoSinLugar.personas.push(p);
+          return;
+        }
+        var m = micros[idx];
+        var entry = porMicro.filter(function(e){ return e.micro.id === m.id; })[0];
+        if(!entry){ entry = { micro: m, personas: [] }; porMicro.push(entry); }
+        entry.personas.push(p);
+        libres[idx]--;
+      });
+    });
+    return { porMicro: porMicro, sinLugar: sinLugar };
+  }
+
+  // Ordena una lista de personas del padrón alfabéticamente por su nombre
+  // completo ya formateado ("Apellido, Nombre"), con comparación
+  // insensible a mayúsculas/acentos para que quede bien alfabetizado.
+  function ordenarAlfabeticamente(personas){
+    return personas.slice().sort(function(a, b){
+      return nombreCompletoPadron(a).localeCompare(nombreCompletoPadron(b), "es", { sensitivity: "base" });
+    });
+  }
+
+  // Encabezado + nombres alfabetizados de un grupo (un micro, o el grupo
+  // "sin lugar" de una sede), tanto para mostrar en pantalla como para el
+  // texto que se copia al portapapeles (que además incluye el encabezado,
+  // no solo los nombres sueltos).
+  function armarGrupoTexto(encabezado, personas){
+    var nombres = ordenarAlfabeticamente(personas).map(nombreCompletoPadron);
+    return {
+      nombres: nombres,
+      texto: encabezado + "\n" + nombres.join("\n"),
+      html: '<ul class="nombres">' + nombres.map(function(n){ return '<li>' + esc(n) + '</li>'; }).join('') + '</ul>'
+    };
+  }
+
+  // Copia `texto` al portapapeles y marca `btn` como "Copiado ✓" un
+  // instante, con fallback a document.execCommand para navegadores/webviews
+  // sin Clipboard API.
+  function copiarAlPortapapeles(texto, btn){
+    var marcarCopiado = function(){
+      var original = btn.getAttribute("data-texto-original") || btn.textContent;
+      btn.setAttribute("data-texto-original", original);
+      btn.textContent = "Copiado ✓";
+      btn.classList.add("copiado");
+      setTimeout(function(){ btn.textContent = original; btn.classList.remove("copiado"); }, 1500);
+    };
+    var marcarError = function(){
+      $("#asignar-error").textContent = "No pudimos copiar automáticamente. Copiá la lista manualmente.";
+    };
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(texto).then(marcarCopiado, marcarError);
+    } else {
+      var ta = document.createElement("textarea");
+      ta.value = texto;
+      ta.style.position = "fixed";
+      ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.select();
+      try{ document.execCommand("copy"); marcarCopiado(); }
+      catch(e){ marcarError(); }
+      document.body.removeChild(ta);
+    }
+  }
+
+  function renderAsignarPreview(propuesta){
+    var el = $("#asignar-preview");
+    var copiarTodoRow = $("#asignar-copiar-todo-row");
+    if(!propuesta || (!propuesta.porMicro.length && !propuesta.sinLugar.length)){
+      el.hidden = true;
+      el.innerHTML = "";
+      if(copiarTodoRow) copiarTodoRow.hidden = true;
+      return;
+    }
+    var grupos = {}; // copiarId -> {nombres, texto, html}
+    var ordenCopiarTodo = [];
+    var html = "";
+    propuesta.porMicro.forEach(function(entry){
+      var copiarId = "micro-" + entry.micro.id;
+      var encabezado = entry.micro.label + " — " + entry.personas.length + " peregrino" + (entry.personas.length === 1 ? "" : "s");
+      var grupo = armarGrupoTexto(encabezado, entry.personas);
+      grupos[copiarId] = grupo;
+      ordenCopiarTodo.push(copiarId);
+      html += '<div class="asignar-preview-micro">' +
+        '<div class="titulo"><span>' + esc(encabezado) + '</span>' +
+        '<button type="button" class="asignar-copiar-btn" data-copiar-id="' + copiarId + '">Copiar lista</button></div>' +
+        grupo.html +
+      '</div>';
+    });
+    propuesta.sinLugar.forEach(function(grupoDatos, i){
+      var copiarId = "sinlugar-" + i;
+      var encabezado = grupoDatos.sede + " — sin lugar disponible (" + grupoDatos.personas.length + ")";
+      var grupo = armarGrupoTexto(encabezado, grupoDatos.personas);
+      grupos[copiarId] = grupo;
+      ordenCopiarTodo.push(copiarId);
+      html += '<div class="asignar-preview-sin-lugar">' +
+        '<div class="titulo"><span>' + esc(encabezado) + '</span>' +
+        '<button type="button" class="asignar-copiar-btn" data-copiar-id="' + copiarId + '">Copiar lista</button></div>' +
+        grupo.html +
+      '</div>';
+    });
+    el.innerHTML = html;
+    el.hidden = false;
+    el.querySelectorAll(".asignar-copiar-btn").forEach(function(btn){
+      btn.addEventListener("click", function(){
+        var grupo = grupos[btn.getAttribute("data-copiar-id")];
+        if(grupo) copiarAlPortapapeles(grupo.texto, btn);
+      });
+    });
+    if(copiarTodoRow){
+      copiarTodoRow.hidden = false;
+      var btnTodo = $("#asignar-copiar-todo");
+      btnTodo.onclick = function(){
+        var texto = ordenCopiarTodo.map(function(id){ return grupos[id].texto; }).join("\n\n");
+        copiarAlPortapapeles(texto, btnTodo);
+      };
+    }
+  }
+
+  function abrirAsignarAleatorioModal(){
+    asignarPropuesta = null;
+    $("#asignar-error").textContent = "";
+    $("#asignar-preview").hidden = true;
+    $("#asignar-preview").innerHTML = "";
+    $("#asignar-copiar-todo-row").hidden = true;
+    $("#asignar-aleatorio-generar").hidden = false;
+    $("#asignar-aleatorio-confirmar").hidden = true;
+    var data = coordUltimoData || coordGetCache() || {};
+    var noInscriptos = coordCalcularNoInscriptos(data);
+    $("#asignar-resumen").textContent = noInscriptos.length
+      ? ("Hay " + noInscriptos.length + " peregrino" + (noInscriptos.length === 1 ? "" : "s") + " sin ningún micro asignado.")
+      : "No hay peregrinos sin micro asignado ahora mismo.";
+    $("#asignar-aleatorio-generar").disabled = !noInscriptos.length;
+    $("#asignar-aleatorio-modal").hidden = false;
+  }
+  $("#coord-asignar-aleatorio").addEventListener("click", function(){ cerrarMenu(); abrirAsignarAleatorioModal(); });
+  $("#asignar-aleatorio-cancelar").addEventListener("click", function(){ $("#asignar-aleatorio-modal").hidden = true; asignarPropuesta = null; });
+
+  $("#asignar-aleatorio-generar").addEventListener("click", function(){
+    var data = coordUltimoData || coordGetCache() || {};
+    asignarPropuesta = armarPropuestaAleatoria(data);
+    renderAsignarPreview(asignarPropuesta);
+    $("#asignar-error").textContent = "";
+    if(!asignarPropuesta.porMicro.length){
+      $("#asignar-error").textContent = "No hay lugares disponibles en ningún micro para asignar a estos peregrinos.";
+      $("#asignar-aleatorio-confirmar").hidden = true;
+      return;
+    }
+    $("#asignar-aleatorio-generar").hidden = true;
+    $("#asignar-aleatorio-confirmar").hidden = false;
+  });
+
+  $("#asignar-aleatorio-confirmar").addEventListener("click", async function(){
+    if(!asignarPropuesta || !asignarPropuesta.porMicro.length) return;
+    var btn = this;
+    btn.disabled = true;
+    $("#asignar-error").textContent = "";
+    var errores = [];
+    var totalOk = 0;
+    for(var i = 0; i < asignarPropuesta.porMicro.length; i++){
+      var entry = asignarPropuesta.porMicro[i];
+      var nombres = entry.personas.map(nombreCompletoPadron);
+      var padronIds = entry.personas.map(function(p){ return p.id; });
+      try{
+        var res = await sb.rpc("lujan_reservar_lugares", { p_micro_id: entry.micro.id, p_nombres: nombres, p_padron_ids: padronIds });
+        if(res.error) throw res.error;
+        totalOk += entry.personas.length;
+      } catch(err){
+        errores.push(entry.micro.label + ": " + ((err && err.message) || "error desconocido"));
+      }
+    }
+    trackEvent('asignacion_aleatoria_confirmada', { asignados: totalOk, errores: errores.length });
+    await loadCoordinadoras();
+    if(errores.length){
+      $("#asignar-error").textContent = "Se asignaron " + totalOk + " peregrino(s). Hubo problemas en: " + errores.join(" · ");
+    } else {
+      $("#asignar-aleatorio-modal").hidden = true;
+      coordSetStatus("Asignación completa: " + totalOk + " peregrino(s) asignados al azar.", "ok");
+    }
+    asignarPropuesta = null;
+    btn.disabled = false;
+  });
+
   $("#coord-listado").addEventListener("change", function(e){
     var input = e.target;
     if(!input.matches('input[type="checkbox"][data-tipo]')) return;
@@ -3091,19 +3586,14 @@
       if(!pend.codigo){ throw new Error("Falta el código de esta reserva."); }
       var res = await sb.rpc("lujan_cancelar_reserva", { p_codigo: pend.codigo });
       if(res.error) throw res.error;
-      // sacamos al pasajero y bajamos el contador de ocupados, en cache y en pantalla
-      var data = coordGetCache() || coordUltimoData;
-      if(data){
-        var pasajero = data.pasajeros.find(function(x){ return x.id === pend.pasajeroId; });
-        data.pasajeros = data.pasajeros.filter(function(x){ return x.id !== pend.pasajeroId; });
-        if(pasajero){
-          var micro = data.micros.find(function(x){ return x.id === pasajero.micro_id; });
-          if(micro) micro.ocupados = Math.max(0, micro.ocupados - 1);
-        }
-        coordSetCache(data);
-        coordRenderCoordinadoras(data);
-      }
+      // Los totales (Libres/Ocupados/Faltan anotarse) siempre tienen que
+      // salir de la base, no de un parche a mano en memoria — por eso,
+      // igual que hace la asignación aleatoria, recargamos todo con
+      // loadCoordinadoras() en vez de restar/filtrar localmente. Un parche
+      // local había quedado desactualizado (no recalculaba "Faltan
+      // anotarse") y podía divergir de la base real.
       cerrarCoordBajaModal();
+      await loadCoordinadoras();
       coordSetStatus("Baja confirmada: " + pend.nombre, "ok");
     } catch(err){
       $("#coord-baja-error").textContent = (err && err.message) || "No pudimos dar de baja la reserva. Revisá la conexión e intentá de nuevo.";
