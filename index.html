@@ -949,6 +949,16 @@
   .micros-admin-error{color:var(--accent); font-size:var(--fs-xs); margin-top:6px; min-height:16px;}
 
   /* ---- asignación aleatoria de no inscriptos (Coordinadoras) ---- */
+  .asignar-capacidad-check{display:flex; flex-direction:column; gap:8px; margin-bottom:14px;}
+  .asignar-capacidad-sede{border:1.5px solid var(--line); border-radius:8px; padding:10px 12px;}
+  .asignar-capacidad-sede .cap-titulo{font-weight:500; font-size:var(--fs-sm); margin-bottom:6px;}
+  .asignar-capacidad-sede .cap-cifras{display:flex; flex-wrap:wrap; gap:4px 14px; font-size:var(--fs-xs); color:var(--ink-soft); margin-bottom:6px;}
+  .asignar-capacidad-sede .cap-cifras b{color:var(--ink); font-variant-numeric:tabular-nums;}
+  .asignar-capacidad-sede .cap-resultado{font-size:var(--fs-sm); font-weight:500; display:flex; align-items:center; gap:6px;}
+  .asignar-capacidad-sede.ok{border-color:#2e8b57;}
+  .asignar-capacidad-sede.ok .cap-resultado{color:#2e8b57;}
+  .asignar-capacidad-sede.falta{border-color:var(--accent); background:var(--accent-tint);}
+  .asignar-capacidad-sede.falta .cap-resultado{color:var(--accent);}
   .asignar-resumen{font-size:var(--fs-sm); color:var(--ink-soft); margin-bottom:14px; text-align:center;}
   .asignar-preview{display:flex; flex-direction:column; gap:10px; max-height:260px; overflow-y:auto; margin-bottom:14px;}
   .asignar-preview-micro{border:1.5px solid var(--line); border-radius:8px; padding:10px 12px;}
@@ -1294,6 +1304,7 @@
   <div class="modal-card modal-wide">
     <h3>Asignar no inscriptos</h3>
     <p id="asignar-aleatorio-intro">Asigna al azar, por lugar de salida, a los peregrinos que todavía no tienen ningún micro. Se llena un micro por completo antes de pasar al siguiente.</p>
+    <div id="asignar-capacidad-check" class="asignar-capacidad-check"></div>
     <div class="asignar-resumen" id="asignar-resumen"></div>
     <div class="asignar-copiar-todo-row" id="asignar-copiar-todo-row" hidden>
       <button type="button" class="btn btn-ghost btn-sm" id="asignar-copiar-todo">Copiar todo</button>
@@ -2596,6 +2607,52 @@
     return (data.padron || []).filter(function(p){ return !idsConReserva[p.id]; });
   }
 
+  // Estimación de capacidad por sede, para que la coordinadora vea de un
+  // vistazo si con los micros ya pedidos alcanza para todos los que
+  // todavía no tienen lugar, o si conviene pedir un micro más antes de
+  // asignar a nadie. Se calcula solo con los datos ya descargados (los
+  // mismos que usan "Faltan anotarse" y el resto de la vista), sin pegarle
+  // a la base de nuevo.
+  function coordCalcularCapacidadPorSede(data){
+    var noInscriptos = coordCalcularNoInscriptos(data);
+    return SEDES_MICROS.map(function(sede){
+      var micros = (data.micros || []).filter(function(m){ return m.salida === sede; });
+      var capacidadTotal = micros.reduce(function(sum, m){ return sum + (m.capacidad || 0); }, 0);
+      var ocupados = micros.reduce(function(sum, m){ return sum + (m.ocupados || 0); }, 0);
+      var libres = Math.max(0, capacidadTotal - ocupados);
+      var aAsignar = noInscriptos.filter(function(p){ return (p.salida_micro || "") === sede; }).length;
+      return {
+        sede: sede,
+        capacidadTotal: capacidadTotal,
+        ocupados: ocupados,
+        libres: libres,
+        aAsignar: aAsignar,
+        alcanza: libres >= aAsignar,
+        diferencia: libres - aAsignar
+      };
+    });
+  }
+
+  function renderAsignarCapacidadCheck(data){
+    var cont = $("#asignar-capacidad-check");
+    if(!cont) return;
+    var porSede = coordCalcularCapacidadPorSede(data);
+    cont.innerHTML = porSede.map(function(s){
+      var resultado = s.alcanza
+        ? ("✅ Alcanza" + (s.diferencia > 0 ? " (sobran " + s.diferencia + " lugar" + (s.diferencia === 1 ? "" : "es") + ")" : " (justo)"))
+        : ("⚠️ Faltan " + Math.abs(s.diferencia) + " lugar" + (Math.abs(s.diferencia) === 1 ? "" : "es") + " — conviene pedir otro micro");
+      return '<div class="asignar-capacidad-sede ' + (s.alcanza ? "ok" : "falta") + '">' +
+        '<div class="cap-titulo">' + esc(s.sede) + '</div>' +
+        '<div class="cap-cifras">' +
+          '<span>Capacidad asignada: <b>' + s.capacidadTotal + '</b></span>' +
+          '<span>Disponible: <b>' + s.libres + '</b></span>' +
+          '<span>A asignar: <b>' + s.aAsignar + '</b></span>' +
+        '</div>' +
+        '<div class="cap-resultado">' + resultado + '</div>' +
+      '</div>';
+    }).join("");
+  }
+
   // Tres cuadros resumen (mismo estilo que los cuadros Libres/Ocupados de
   // cada micro): lugares libres y ocupados sumados entre todos los micros,
   // y cuántos peregrinos del padrón todavía no se anotaron en ninguno.
@@ -3256,7 +3313,7 @@
       var addRow = document.createElement("div");
       addRow.className = "micros-admin-add";
       addRow.innerHTML =
-        '<input type="number" min="1" max="200" value="55" aria-label="Capacidad del nuevo micro">' +
+        '<input type="number" min="1" max="200" value="60" aria-label="Capacidad del nuevo micro">' +
         '<button type="button" class="btn btn-ghost btn-sm micros-admin-add-btn" data-sede="' + esc(sede) + '">+ Agregar micro</button>';
       wrap.appendChild(addRow);
       cont.appendChild(wrap);
@@ -3277,7 +3334,7 @@
       var sede = addBtn.getAttribute("data-sede");
       var wrap = addBtn.closest(".micros-admin-sede");
       var input = wrap ? wrap.querySelector('input[type="number"]') : null;
-      var capacidad = input ? parseInt(input.value, 10) : 55;
+      var capacidad = input ? parseInt(input.value, 10) : 60;
       if(!capacidad || capacidad < 1){
         $("#micros-admin-error").textContent = "La capacidad tiene que ser un número mayor a 0.";
         return;
@@ -3515,6 +3572,8 @@
       ? ("Hay " + noInscriptos.length + " peregrino" + (noInscriptos.length === 1 ? "" : "s") + " sin ningún micro asignado.")
       : "No hay peregrinos sin micro asignado ahora mismo.";
     $("#asignar-aleatorio-generar").disabled = !noInscriptos.length;
+    $("#asignar-capacidad-check").hidden = false;
+    renderAsignarCapacidadCheck(data);
     $("#asignar-aleatorio-modal").hidden = false;
   }
   $("#coord-asignar-aleatorio").addEventListener("click", function(){ cerrarMenu(); abrirAsignarAleatorioModal(); });
@@ -3524,6 +3583,7 @@
     var data = coordUltimoData || coordGetCache() || {};
     asignarPropuesta = armarPropuestaAleatoria(data);
     renderAsignarPreview(asignarPropuesta);
+    $("#asignar-capacidad-check").hidden = true;
     $("#asignar-error").textContent = "";
     if(!asignarPropuesta.porMicro.length){
       $("#asignar-error").textContent = "No hay lugares disponibles en ningún micro para asignar a estos peregrinos.";
