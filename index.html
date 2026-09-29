@@ -1518,12 +1518,17 @@
   function normalizarTexto(s){
     return String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
   }
+  // Busca por palabra, no por frase exacta: separa lo escrito en palabras y
+  // exige que TODAS aparezcan en "apellido nombre", en cualquier orden. Así
+  // "María Sahagún" encuentra a "Sahagún, María" igual que "Sahagún María"
+  // — antes solo funcionaba si se tipeaba apellido primero, porque
+  // comparaba la frase completa tal cual contra el texto en ese orden fijo.
   function buscarEnPadron(query, lista){
-    var q = normalizarTexto(query).trim();
-    if(!q) return [];
+    var palabras = normalizarTexto(query).trim().split(/\s+/).filter(Boolean);
+    if(!palabras.length) return [];
     return lista.filter(function(p){
       var hay = normalizarTexto(p.apellido + " " + p.nombre);
-      return hay.indexOf(q) !== -1;
+      return palabras.every(function(w){ return hay.indexOf(w) !== -1; });
     }).slice(0, 8);
   }
 
@@ -2382,9 +2387,14 @@
     var map = await ensureMicrosMap();
     var res = await sb.from("lujan_pasajeros").select("nombre,salida,micro_id").is("cancelado_at", null);
     if(res.error) throw res.error;
+    // Mismo criterio que buscarEnPadron: por palabra y sin importar el
+    // orden ni los acentos, para que "María Sahagún" encuentre a alguien
+    // guardado como "Sahagún, María" igual que "Sahagún María".
+    var palabras = normalizarTexto(query).trim().split(/\s+/).filter(Boolean);
     var matches = [];
     (res.data || []).forEach(function(p){
-      if(p.nombre && p.nombre.toLowerCase().indexOf(query) !== -1){
+      var hay = normalizarTexto(p.nombre || "");
+      if(palabras.length && palabras.every(function(w){ return hay.indexOf(w) !== -1; })){
         var micro = map[p.micro_id];
         matches.push({ nombre: p.nombre, salida: p.salida, microId: p.micro_id, microLabel: micro ? micro.label : "—", disponibles: micro ? (micro.capacidad - micro.ocupados) : 0 });
       }
