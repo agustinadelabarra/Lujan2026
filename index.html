@@ -3740,6 +3740,9 @@
     e.stopPropagation();
     var tip = $("#vertexsur-tooltip");
     tip.hidden = !tip.hidden;
+    if(!tip.hidden){
+      trackEvent('vertexsur_click', {});
+    }
   });
   document.addEventListener("click", function(e){
     if(!e.target.closest("#vertexsur-mark") && !e.target.closest("#vertexsur-tooltip")){
