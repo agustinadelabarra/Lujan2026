@@ -673,8 +673,13 @@
     display:flex;
     flex-direction:column;
     gap:2px;
-    max-height:140px;
-    overflow-y:auto;
+    /* Antes tenía max-height:140px + overflow-y:auto, con scroll interno —
+       en Mac la barra de scroll queda oculta por defecto (solo aparece
+       mientras se scrollea activamente), así que la lista se veía cortada
+       sin ningún indicio de que había más gente debajo. Se saca el límite
+       acá también (ya no hacía falta la regla #coord-listado de abajo,
+       que hacía exactamente esto solo para Coordinadoras) para que se
+       despliegue completa en cualquier pantalla, igual que en Coordinadoras. */
     padding-top:2px;
     border-top:1px dashed var(--line);
   }
@@ -973,7 +978,6 @@
   .asignar-copiar-todo-row{display:flex; justify-content:flex-end; margin-bottom:8px;}
   .asignar-copiar-todo-row .copiado{border-color:#2e8b57 !important; color:#2e8b57 !important;}
   .asignar-error{color:var(--accent); font-size:var(--fs-xs); margin-top:6px; min-height:16px;}
-  #coord-listado .participantes-list{max-height:none; overflow-y:visible;}
   .participantes-list .coord-p-item{
     flex-wrap:nowrap; overflow-x:auto; gap:10px; padding:12px 0;
   }
