@@ -1330,7 +1330,7 @@
     <div class="error-box no-print" id="app-disabled-banner" hidden>La aplicación está temporalmente deshabilitada por la organización. Para reactivarla, consultá con Coordinación.</div>
     <div class="counter-bar">
       <span class="counter-num" id="contador-num">–</span>
-      <span class="counter-lbl">peregrinos ya anotados</span>
+      <span class="counter-lbl">peregrinos agradecidos</span>
     </div>
     <div class="home-actions">
       <button class="home-action-btn primary" id="go-reservar" type="button">
@@ -3257,10 +3257,10 @@
   var SEDE_ABREV = { "Vicente López": "VL", "Nordelta": "ND" };
   var SEDES_MICROS = ["Nordelta", "Vicente López"];
   // Rango de numeración reservado por sede (definido en el chat): Nordelta
-  // usa 1-5, Vicente López usa 6-10. proximoNumeroMicro busca el número
+  // usa 1-9, Vicente López usa 6-8. proximoNumeroMicro busca el número
   // libre más chico DENTRO del rango de la sede indicada (no un contador
   // global), reutilizando huecos si se borró un micro de esa sede.
-  var SEDE_RANGO_MICROS = { "Nordelta": [1, 5], "Vicente López": [6, 10] };
+  var SEDE_RANGO_MICROS = { "Nordelta": [1, 9], "Vicente López": [6, 8] };
 
   function proximoNumeroMicro(micros, sede){
     var usados = {};
